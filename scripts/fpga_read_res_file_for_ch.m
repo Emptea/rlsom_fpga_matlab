@@ -1,9 +1,10 @@
-function sg = fpga_read_res_file_for_ch(filename, dims)
+function sg = fpga_read_res_file_for_ch(filename, dims, flag_u32)
 % sg имеет размерность 8хMхKxN
 % тестовый файл содержит N строк в каждой строке 8 каналов
 arguments
     filename string = "test.txt"
     dims (1,2) double = [232, 1]  % [M, K]    
+    flag_u32 double = 0
 end
 
 % Читаем строки
@@ -15,17 +16,25 @@ lines(lines == "") = [];
 chars = char(lines);
 
 % Разбиваем на группы по 4 символа
-hex_words = reshape(chars.', 4, []).';
 
-% hex -> uint16 -> int16
-u16 = uint16(hex2dec(hex_words));
-s16 = typecast(u16, 'int16');
+if flag_u32
+    hex_words = reshape(chars.', 8, []).';
+    u32 = uint32(hex2dec(hex_words));
+    i32 =  typecast(u32, 'int32');
 
-% Восстанавливаем пары Re/Im
-re = double(s16(1:2:end));
-im = double(s16(2:2:end));
-
-sg = complex(re, im);
+    sg = double(i32);
+else
+    hex_words = reshape(chars.', 4, []).';
+    % hex -> uint16 -> int16
+    u16 = uint16(hex2dec(hex_words));
+    s16 = typecast(u16, 'int16');
+    
+    % Восстанавливаем пары Re/Im
+    re = double(s16(2:2:end));
+    im = double(s16(1:2:end));
+    
+    sg = complex(re, im);
+end
 
 % В каждой строке было 8 комплексных отсчётов
 sg = reshape(sg, dims(1), dims(2), []);

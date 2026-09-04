@@ -1,5 +1,5 @@
 function [data_fxp] = fpga_double2fxp(data_d)
 
-data_fxp = round(data_d / 0.0136 * 2^10);
+data_fxp = round(data_d * (2^12 - 1));
 
 end

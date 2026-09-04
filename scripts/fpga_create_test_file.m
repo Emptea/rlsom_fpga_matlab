@@ -5,7 +5,8 @@ arguments
 end
 
 sg_reverse = sg(end:-1:1, :, :);
-sg_s16 = int16(reshape([real(sg_reverse(:)), imag(sg_reverse(:))]', [], 1));
+sg_s16 = int16(reshape([imag(sg_reverse(:)), real(sg_reverse(:))]', [], 1));
+% sg_s16 = int16(reshape([real(sg_reverse(:)), imag(sg_reverse(:))]', [], 1));
 arr_char = reshape(dec2hex(sg_s16, 4)', 16 * 4, []);
 arr_string = string(arr_char');
 writelines(arr_string, filename)
