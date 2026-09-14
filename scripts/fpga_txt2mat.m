@@ -5,17 +5,20 @@ fprintf('Обработка файла: %s\n', filename);
 [folder, name, ext] = fileparts(filename);
 file = name + ext;
 out_filename = folder + "/" + name + ".mat";
+
+n_far_and_need = 164; % количество отчетов ближней и дальней зонны в сумме
+
 % Определяем тип файла
 if contains(file, "tp1")
     sg = fpga_read_test_file(filename, [232, 1]);
     tp1_fd = fpga_fxp2double(sg);
     save(out_filename, "tp1_fd");
 elseif contains(file, "tp2-fap")
-    sg = fpga_read_test_file(filename, [141, 1]);
+    sg = fpga_read_test_file(filename, [n_far_and_need, 1]);
     tp2_fap = fpga_fxp2double(sg);
     save(out_filename, "tp2_fap");
 elseif contains(file, "tp3-lou")
-    sg = fpga_read_test_file(filename, [141, 1]);
+    sg = fpga_read_test_file(filename, [n_far_and_need, 1]);
     tp3_lou = fpga_fxp2double(sg);
     save(out_filename, "tp3_lou");
 elseif contains(file, "tp4-sf-far")
