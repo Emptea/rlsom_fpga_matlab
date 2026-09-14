@@ -10,14 +10,21 @@ end
 output_file = out_basename + "_tp" + tp_num + "_ch" + ch_num + "_rg" + range_gate + ".hex";
 prog_path = "~/drivers/ip_comm_test/build/";
 executable = "./ip_comm_test";
-
-system_cmd = sprintf('ssh -t mini "cd %s && sudo %s %d %d %d %d %s %s && sudo ./reload_driver.sh "', ...
-    prog_path, executable, tp_num, ch_num, range_gate, n_transfers, input_file, output_file);
-disp(system_cmd)
-[~, cmdout] = system(system_cmd);
-
-lines = split(cmdout, newline);
-dmaLines = lines(contains(lines, 'DMA'));
+while true
+    system_cmd = sprintf('ssh -t mini "cd %s && sudo %s %d %d %d %d %s %s && sudo ./reload_driver.sh "', ...
+        prog_path, executable, tp_num, ch_num, range_gate, n_transfers, input_file, output_file);
+    disp(system_cmd)
+    [~, cmdout] = system(system_cmd);
+    
+    lines = split(cmdout, newline);
+    dmaLines = lines(contains(lines, 'DMA'));
+    errLines = lines(contains(lines, 'error'));
+    if (isempty(errLines))
+        break;
+    else
+        disp(errLines);
+    end
+end
 dmaLines = strjoin(dmaLines, newline);
 initLines = lines(contains(lines,'dma_proxy module initialized'));
 initLines = strjoin(initLines, newline);
