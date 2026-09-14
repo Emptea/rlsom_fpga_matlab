@@ -42,6 +42,14 @@ switch(tp_num)
         load(folder + "/sig_tp7_ad_near.mat")
         sg = tp7_ad_far;
         sg(102:141, :) = tp7_ad_near;
-    case 9
-        
+    case 10
+        load(folder + "/sig_tp9_rank_far.mat")
+        load(folder + "/sig_tp9_rank_near.mat")
+        sg = tp9_rank_far;
+        sg(102:141, :) = tp9_rank_near;
+    case 11
+        load(folder + "/sig_tp8_apu_far.mat")
+        load(folder + "/sig_tp8_apu_near.mat")
+        sg = tp8_apu_far;
+        sg(102:141, :) = tp8_apu_near;
 end
