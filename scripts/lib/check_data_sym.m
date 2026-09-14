@@ -1,4 +1,9 @@
-function sqnr_db = check_data_sym( flp_sym, rtl_sym )
+function [sqnr_db, sqnr_sc_db] = check_data_sym( flp_sym, rtl_sym , plot_on)
+arguments
+    flp_sym double
+    rtl_sym double
+    plot_on double = 1
+end
     nfft = numel(flp_sym);
     
     % make row-vectors
@@ -10,33 +15,55 @@ function sqnr_db = check_data_sym( flp_sym, rtl_sym )
     end
     
     flp_mean_power = mean(abs(flp_sym).^2);
-    rtl_mean_power = mean(abs(rtl_sym).^2);
-    rtl_desc_sym = rtl_sym * sqrt(flp_mean_power / rtl_mean_power);
+    % rtl_mean_power = mean(abs(rtl_sym).^2);
+    % rtl_desc_sym = rtl_sym * sqrt(flp_mean_power / rtl_mean_power);
+    rtl_desc_sym = fpga_fxp2double(rtl_sym);
     
     sqnr = flp_mean_power ./ mean(abs(rtl_desc_sym - flp_sym).^2);
-       
     sqnr_db = 10*log10(sqnr);
 
-    figure();
-    subplot(3,1,1);
-        plot( ...
-            1 : nfft, real(rtl_sym), 'r', ...
-            1 : nfft, imag(rtl_sym), 'b' ...
-        );
-        legend('Board Re', 'Board Im');
-        title("Board vs Model");
-    subplot(3,1,2);
-        plot( ...
-            1 : nfft, real(rtl_desc_sym), 'r', ...
-            1 : nfft, real(flp_sym), 'b--' ...
-        );
-        legend("Board Descaled Re", "Model Re");
-    subplot(3,1,3);
-        plot( ...
-            1 : nfft, imag(rtl_desc_sym), 'r', ...
-            1 : nfft, imag(flp_sym), 'b--' ...
-        );
-        legend("Board Descaled Im", "Model Im");
+flp_sc_sym = fpga_double2fxp(flp_sym);
+flp_mean_power_sc = mean(abs(flp_sc_sym).^2);
+
+sqnr_sc = flp_mean_power_sc ./ mean(abs(rtl_sym - flp_sc_sym).^2);
+sqnr_sc_db = 10*log10(sqnr_sc);
+
+
+
+if(plot_on)
+        figure();
+        if(isreal(flp_sym))
+            subplot(2,1,1);
+            plot(1 : nfft, real(rtl_sym), 'r');
+            legend('Board');
+            title("Board vs Model");
+            subplot(2,1,2);
+            plot( ...
+                1 : nfft, real(rtl_sym), 'r', ...
+                1 : nfft, real(flp_sc_sym), 'b--' ...
+                );
+            legend("Board", "Model Scaled");
+        else
+            subplot(3,1,1);
+            plot( ...
+                1 : nfft, real(rtl_sym), 'r', ...
+                1 : nfft, imag(rtl_sym), 'b' ...
+                );
+            legend('Board Re', 'Board Im');
+            title("Board vs Model");
+            subplot(3,1,2);
+            plot( ...
+                1 : nfft, real(rtl_sym), 'r', ...
+                1 : nfft, real(flp_sc_sym), 'b--' ...
+                );
+            legend("Board Re", "Model Scaled Re");
+            subplot(3,1,3);
+            plot( ...
+                1 : nfft, imag(rtl_sym), 'r', ...
+                1 : nfft, imag(flp_sc_sym), 'b--' ...
+                );
+            legend("Board Im", "Model Scaled Im");
+            end
     
 end
 
