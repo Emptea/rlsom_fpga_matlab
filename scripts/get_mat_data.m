@@ -52,4 +52,7 @@ switch(tp_num)
         load(folder + "/sig_tp8_apu_near.mat")
         sg = tp8_apu_far;
         sg(102:141, :) = tp8_apu_near;
+    case 12
+        load(folder + "/sig_tp12_fapch_coeffs.mat")
+        sg = tp12_fapch_coeffs;
 end
