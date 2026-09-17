@@ -5,7 +5,7 @@ folder_basename = "data/";
 tp_num = tp.TP_SF; % ADC test point
 range_gate = 46;
 pulse_num = 27; % pulse num to plot
-model_folder = folder_basename + "/2026-09-15/sig";
+model_folder = folder_basename + "/2026-09-17/sig";
 out_folder = folder_basename + date + "/";
 far_field = 41:141;
 near_field = 148:187;
@@ -13,6 +13,7 @@ hdr_sz = 6;
 hdr = 1:hdr_sz;
 noise_level = 40;
 n_ch = 8;
+n_transfers = 20; % = n_packets / 4, max 250
 
 if tp_num > tp.TP_FFT
     ch = 0;
@@ -22,10 +23,10 @@ if tp_num > tp.TP_FFT
 end
 %%
 if tp_num > tp.TP_FFT
-    launch_ip_comm_test(tp_num, ch, range_gate, 250, "adc_2_targets_1000_packets.txt");
+    launch_ip_comm_test(tp_num, ch, range_gate, 250, "adc_2_targets_1000_packets_1709.txt");
 else
     for ch = 0:7
-        launch_ip_comm_test(tp_num, ch, range_gate, 250, "adc_2_targets_1000_packets.txt");
+        launch_ip_comm_test(tp_num, ch, range_gate, n_transfers, "adc_2_targets_1000_packets_1709.txt");
     end
 end
 get_board_data(folder_basename + date + "/", "out");
@@ -305,18 +306,18 @@ figure;
 tiledlayout(4, 2, "TileSpacing", "compact");
 for ch_num = 1:8
     nexttile;
-    plot(reshape(real(out_sg(ch_num,:,:)),[],1) - reshape(real(check_sg(ch_num,:,pulse_num)), [], 1))
+    plot(reshape(real(out_sg(ch_num,:,:)),[],1) - reshape(real(check_sg(ch_num,:,:)), [], 1))
     title(sprintf('Channel %d', ch_num));
     grid on;
 end
-sgtitle(sprintf("Signal Difference — Pulse %d Re", pulse_num));
+sgtitle(sprintf("Signal Difference — Re"));
 %%
 if(~isreal(check_sg))
     figure;
     tiledlayout(4, 2, "TileSpacing", "compact");
     for ch_num = 1:8
         nexttile;
-        plot(reshape(imag(out_sg(ch_num,:,pulse_num)), [], 1) - reshape(imag(check_sg(ch_num,:,pulse_num)), [], 1))
+        plot(reshape(imag(out_sg(ch_num,:,:)), [], 1) - reshape(imag(check_sg(ch_num,:,:)), [], 1))
         title(sprintf('Channel %d', ch_num));
         grid on;
     end
