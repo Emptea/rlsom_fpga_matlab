@@ -1,4 +1,4 @@
-function [sqnr_db, sqnr_sc_db] = check_data_sym( flp_sym, rtl_sym , plot_on, is_scaled)
+function [max_err_db, sqnr_sc_db] = check_data_sym( flp_sym, rtl_sym , plot_on, is_scaled)
 arguments
     flp_sym double
     rtl_sym double
@@ -18,10 +18,9 @@ end
 flp_mean_power = mean(abs(flp_sym).^2);
 % rtl_mean_power = mean(abs(rtl_sym).^2);
 % rtl_desc_sym = rtl_sym * sqrt(flp_mean_power / rtl_mean_power);
-rtl_desc_sym = fpga_fxp2double(rtl_sym);
+% rtl_desc_sym = fpga_fxp2double(rtl_sym);
+rtl_desc_sym = rtl_sym;
 
-sqnr = flp_mean_power ./ mean(abs(rtl_desc_sym - flp_sym).^2);
-sqnr_db = 10*log10(sqnr);
 
 
 if (~is_scaled)
@@ -33,40 +32,46 @@ flp_mean_power_sc = mean(abs(flp_sc_sym).^2);
 sqnr_sc = flp_mean_power_sc ./ mean(abs(rtl_sym - flp_sc_sym).^2);
 sqnr_sc_db = 10*log10(sqnr_sc);
 
+sqnr = mean(abs(rtl_sym - flp_sc_sym).^2);
+sqnr = max(abs(rtl_sym - flp_sc_sym).^2);
+max_err_db = pow2db(sqnr);
+
+
 if(plot_on)
     figure();
     if(isreal(flp_sym))
-        subplot(2,1,1);
+        ax1 = subplot(2,1,1);
         plot(1 : nfft, real(rtl_sym), 'r');
         legend('Board');
         title("Board vs Model");
-        subplot(2,1,2);
+        ax2 = subplot(2,1,2);
         plot( ...
             1 : nfft, real(rtl_sym), 'r', ...
             1 : nfft, real(flp_sc_sym), 'b--' ...
             );
         legend("Board", "Model Scaled");
+        linkaxes([ax1, ax2], 'x');
     else
-        subplot(3,1,1);
+        ax1 = subplot(3,1,1);
         plot( ...
             1 : nfft, real(rtl_sym), 'r', ...
             1 : nfft, imag(rtl_sym), 'b' ...
             );
         legend('Board Re', 'Board Im');
         title("Board vs Model");
-        subplot(3,1,2);
+        ax2 = subplot(3,1,2);
         plot( ...
             1 : nfft, real(rtl_sym), 'r', ...
             1 : nfft, real(flp_sc_sym), 'b--' ...
             );
         legend("Board Re", "Model Scaled Re");
-        subplot(3,1,3);
+        ax3 = subplot(3,1,3);
         plot( ...
             1 : nfft, imag(rtl_sym), 'r', ...
             1 : nfft, imag(flp_sc_sym), 'b--' ...
             );
         legend("Board Im", "Model Scaled Im");
-    end
-
+        linkaxes([ax1, ax2, ax3], 'x');
+    end   
 end
 
