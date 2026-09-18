@@ -4,12 +4,16 @@ arguments
     basename string = "out";
     date string = string(datetime('today', 'Format', 'yyyy-MM-dd'));
 end
+
 prog_path = "~/drivers/ip_comm_test/build/";
+remote_folder = prog_path + date + "/";
 if ~exist(savefolder, 'dir')
     mkdir(savefolder)
 end
-system_cmd = "scp " + " mini:" + prog_path ...
-    + date + "/" + basename + "* " + savefolder;
+
+system_cmd = ...
+    "rsync -av --include='" + basename + "*' --exclude='*' " + ...
+    "mini:" + remote_folder + " """ + savefolder + "/""";
 [status, cmdout] = system(system_cmd);
 
 if status == 0
@@ -18,8 +22,6 @@ if status == 0
     % List copied files
     ls(savefolder + basename + "*");
 else
-    fprintf('✗ SCP failed with status: %d\n', status);
-    % Try to get error message with stderr redirection
-    [~, errout] = system(system_cmd + " 2>&1");
-    disp(errout);
+    fprintf('✗ rsync failed with status: %d\n', status);
+    disp(cmdout);
 end
