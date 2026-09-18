@@ -21,7 +21,11 @@ elseif contains(file, "tp11")
 elseif contains(file, "tp12")
     sg = fpga_read_res_file_for_ch(filename, [8 + hdr_sz, 1]);
     tp12_fapch_coeffs = fpga_fxp2double(sg);
-    save(out_filename, "tp12_fapch_coeffs"); 
+    save(out_filename, "tp12_fapch_coeffs");
+elseif contains(file, "tp13")
+    sg = fpga_read_res_file_for_ch(filename, [n_fft + hdr_sz, 1]);
+    tp13_weight = fpga_fxp2double(sg);
+    save(out_filename, "tp13_weight");
 elseif contains(file, "tp2")
     sg = fpga_read_res_file_for_ch(filename, [n_far_and_need + hdr_sz, 1]);
     tp2_cut = fpga_fxp2double(sg);

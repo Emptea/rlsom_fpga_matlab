@@ -2,10 +2,10 @@ close all
 date = "2026-09-14";
 date = string(datetime('today', 'Format', 'yyyy-MM-dd'));
 folder_basename = "data/";
-tp_num = tp.TP_SF; % ADC test point
-range_gate = 47;
-pulse_num = 50; % pulse num to plot
-model_folder = folder_basename + "/2026-09-15/sig";
+tp_num = tp.TP_BYPASS; % ADC test point
+range_gate = 46; % от 0 до 140
+pulse_num = 27; % pulse num to plot
+model_folder = folder_basename + "/2026-09-17/sig";
 out_folder = folder_basename + date + "/";
 far_field = 41:141;
 near_field = 148:187;
@@ -13,6 +13,7 @@ hdr_sz = 6;
 hdr = 1:hdr_sz;
 noise_level = 40;
 n_ch = 8;
+n_transfers = 250; % = n_packets / 4, max 250
 
 if tp_num > tp.TP_FFT
     ch = 0;
@@ -21,18 +22,24 @@ if tp_num > tp.TP_FFT
     end
 end
 %%
-if tp_num > tp.TP_FFT
-    launch_ip_comm_test(tp_num, ch, range_gate, 250, "new_adc_1000_packs.txt");
-else
-    for ch = 0:7
-        launch_ip_comm_test(tp_num, ch, range_gate, 20, "new_adc_1000_packs.txt");
-    end
+for tp_num = [1:uint32(tp.TP_FFT), uint32(tp.TP_WEIGHT_OUT)]
+% for range_gate = 0:140
+switch tp_num
+    case {tp.TP_MAX, tp.TP_FIND, tp.TP_RANK, tp.TP_APU, tp.TP_FAPCH_COEFFS}
+        launch_ip_comm_test(tp_num, ch, range_gate, 250, "adc_2_targets_1000_packets_1709.txt");
+    otherwise
+        for ch = 0:7
+            launch_ip_comm_test(tp_num, ch, range_gate, n_transfers, "adc_2_targets_1000_packets_1709.txt");
+        end
+% end
 end
+end
+%%
 get_board_data(folder_basename + date + "/", "out");
 %%
 clear sg
 sg = read_board_data(out_folder, tp_num, range_gate, hdr_sz);
-third_dim = 2:(size(sg,3)+1);
+third_dim = 1:(size(sg,3));
 
 switch tp_num
     case {tp.TP_BYPASS, tp.TP_SF}
@@ -59,14 +66,14 @@ switch tp_num
             zeros(8,20,size(sg,3)), ...
             model_sg(:,102:end,1:size(sg,3)), ...
             zeros(8,3,size(sg,3))];
-        out_sg = sg(:,[hdr_sz+1:end],:);      
+        out_sg = sg(:,[hdr_sz+1:end],:);
     case tp.TP_DDR
+        clear tp5_sg
         for ch = 0:7
             try
                 hexname = out_folder + "/out_tp5_ch" + ch ...
                     + "_rg" + range_gate + ".hex";
-                tp5_sg(ch+1,:,:) = fpga_txt2mat_for_ch( ...
-                    hexname, ch, range_gate);
+                tp5_sg(ch+1,:,:) = fpga_txt2mat_for_ch(hexname);
                 disp(sg(ch+1, hdr_sz, 1))
             catch
                 disp("Found no file for channel " + ch)
@@ -81,11 +88,8 @@ switch tp_num
         model_sg = get_mat_data( ...
             model_folder, tp_num, range_gate);
 
-        check_sg = [ ...
-            model_sg(:,1:101,third_dim), ...
-            zeros(8,20,size(sg,3)), ...
-            model_sg(:,102:end,third_dim), ...
-            zeros(8,3,size(sg,3))];
+        check_sg = [model_sg(:,1:101,third_dim), ...
+            model_sg(:,102:end,third_dim)];
         out_sg = abs(sg(:,hdr_sz+1:end,:));
         check_sg = abs(check_sg);
 
@@ -129,7 +133,7 @@ end
 save_for_model(out_sg, tp_num);
 %%
 switch tp_num
-    case tp.TP_FFT
+    case {tp.TP_FFT, tp.TP_WEIGHT_OUT}
         figure; plot(check_sg(:, :,pulse_num).')
         legend("channel " + num2str([0:n_ch - 1].'))
         title("Signal from model pulse num " + pulse_num)
@@ -147,7 +151,7 @@ switch tp_num
         figure; plot_complex(check_sg.')
         subplot(2,1,1); title("Signal from model pulse num " + pulse_num)
         legend("channel " + num2str([0:n_ch - 1].'))
-        subplot(2,1,2); 
+        subplot(2,1,2);
         legend("channel " + num2str([0:n_ch - 1].'))
     otherwise
         figure; plot_complex(check_sg(:,:,pulse_num).')
@@ -172,7 +176,7 @@ switch tp_num
         figure; plot_complex(out_sg.')
         subplot(2,1,1); title("Signal from board pulse num " + pulse_num)
         legend("channel " + num2str([0:n_ch - 1].'))
-        subplot(2,1,2); 
+        subplot(2,1,2);
         legend("channel " + num2str([0:n_ch - 1].'))
     otherwise
         figure; plot_complex(out_sg(:,:,pulse_num).')
@@ -195,14 +199,14 @@ switch tp_num
             check  = check_sg(ch_num,:,pulse_num).';
             output = out_sg(ch_num,:,pulse_num).';
 
-            check_data_sym(check, output, 1, 1);
-            [sqnr_db, sqnr_sc_db] = check_data_sym(check(range_gate), output(range_gate), 0,1);
+            [max_err_db, sqnr_sc_db] = check_data_sym(check, output, 1, 1);
+            % % check_data_sym(check(range_gate), output(range_gate), 0,1);
 
             sg_pwr = pow2db(max(abs(out_sg(ch_num,:,pulse_num)).^2));
 
             disp("Channel " + num2str(ch_num) ...
-                + " SQNR for descaled rtl = " ...
-                + num2str(sqnr_db) + " dB, " ...
+                + " Max Error dB = " ...
+                + num2str(max_err_db) + " dB, " ...
                 + " SQNR for scaled sg = " ...
                 + num2str(sqnr_sc_db) + " dB, " ...
                 + "max signal pwr = " + sg_pwr + " dB")
@@ -213,12 +217,12 @@ switch tp_num
                 + ": Board vs Model")
         end
     case tp.TP_FIND
-        [sqnr_db, sqnr_sc_db] = check_data_sym(check_sg, out_sg(:,pulse_num).');
+        [max_err_db, sqnr_sc_db] = check_data_sym(check_sg, out_sg(:,pulse_num).');
         sg_pwr = pow2db(max(abs(out_sg(ch_num,:,pulse_num)).^2));
 
         disp("Channel " + num2str(ch_num) ...
-            + " SQNR for descaled rtl = " ...
-            + num2str(sqnr_db) + " dB, " ...
+            + " Max Error dB = " ...
+            + num2str(max_err_db) + " dB, " ...
             + " SQNR for scaled sg = " ...
             + num2str(sqnr_sc_db) + " dB, " ...
             + "max signal pwr = " + sg_pwr + " dB")
@@ -227,7 +231,7 @@ switch tp_num
         title("Pulse " + num2str(pulse_num) + ": Board vs Model")
 
     case {tp.TP_MAX, tp.TP_RANK, tp.TP_APU}
-        [sqnr_db, sqnr_sc_db] = check_data_sym( ...
+        [max_err_db, sqnr_sc_db] = check_data_sym( ...
             check_sg(:,pulse_num).', ...
             out_sg(:,pulse_num).');
 
@@ -235,29 +239,21 @@ switch tp_num
 
 
         disp("Channel " + num2str(ch_num) ...
-            + " SQNR for descaled rtl = " ...
-            + num2str(sqnr_db) + " dB, " ...
+            + " Max Error dB = " ...
+            + num2str(max_err_db) + " dB, " ...
             + " SQNR for scaled sg = " ...
             + num2str(sqnr_sc_db) + " dB, " ...
             + "max signal pwr = " + sg_pwr + " dB")
-
         subplot(3,1,1);
         title("Pulse " + num2str(pulse_num) + ": Board vs Model")
     case tp.TP_FAPCH_COEFFS
         for ch_num = 1:n_ch
-            [sqnr_db, sqnr_sc_db] = check_data_sym( ...
+            [max_err_db, sqnr_sc_db] = check_data_sym( ...
                 2^14 * check_sg(ch_num,:).', ...
                 out_sg(ch_num,:).', 0);
 
             sg_pwr = pow2db(max(abs(out_sg(ch_num,:)).^2));
 
-            % disp("Channel " + num2str(ch_num) ...
-            %     + " SQNR for descaled rtl = " ...
-            %     + num2str(sqnr_db) + " dB, " ...
-            %     + " SQNR for scaled sg = " ...
-            %     + num2str(sqnr_sc_db) + " dB, " ...
-            %     + "max signal pwr = " + sg_pwr + " dB")
-            % 
             check_scaled = round(check_sg(ch_num, 1) * 2^14);
             disp("Channel " + ch_num + ": board = " ...
                 + real(out_sg(ch_num, 1)) + " + "  + imag(out_sg(ch_num, 1)) ...
@@ -267,15 +263,15 @@ switch tp_num
 
     otherwise  % tp_num = 0:4, 6, or 7
         for ch_num = 1:n_ch
-            [sqnr_db, sqnr_sc_db] = check_data_sym( ...
+            [max_err_db, sqnr_sc_db] = check_data_sym( ...
                 check_sg(ch_num,:,pulse_num).', ...
                 out_sg(ch_num,:,pulse_num).', 1, 1);
 
             sg_pwr = pow2db(max(abs(out_sg(ch_num,:,pulse_num)).^2));
 
             disp("Channel " + num2str(ch_num) ...
-                + " SQNR for descaled rtl = " ...
-                + num2str(sqnr_db) + " dB, " ...
+                + " Max Error dB = " ...
+                + num2str(max_err_db) + " dB, " ...
                 + " SQNR for scaled sg = " ...
                 + num2str(sqnr_sc_db) + " dB, " ...
                 + "max signal pwr = " + sg_pwr + " dB")
@@ -287,41 +283,61 @@ switch tp_num
         end
 end
 %%
+
 if tp_num == tp.TP_FAPCH_COEFFS
     check_data_sym(check_sg(1,:).', ...
-               out_sg(1,:).')
+        out_sg(1,:).')
+    sgtitle("Whole signal for channel 1: Board vs Model")
 elseif (tp_num > 7)
     n_sf_diff = 20;
     check_data_sym((reshape(check_sg(1:end-n_sf_diff), 1, [])).', ...
-                   (reshape(out_sg(n_sf_diff+1:end), 1, [])).')
+        (reshape(out_sg(n_sf_diff+1:end), 1, [])).')
+    sgtitle("Whole signal for channel 1: Board vs Model")
 else
-    check_data_sym((reshape(check_sg(1,:,:), 1, [])).', ...
-                   (reshape(out_sg(1,:,:), 1, [])).',1,1)
+    for ch_num = 1:8
+        check_data_sym((reshape(check_sg(ch_num,:,:), 1, [])).', ...
+            (reshape(out_sg(ch_num,:,:), 1, [])).',1,1)
+        sgtitle(sprintf("Whole signal for channel %d: Board vs Model", ch_num));
+    end
 end
 
 if(isreal(check_sg) || tp_num == tp.TP_FAPCH_COEFFS)
-    subplot(2,1,1); 
+    subplot(2,1,1);
 else
     subplot(3,1,1);
 end
-title("Whole signal for channel 1: Board vs Model")
+
 %%
 figure;
 tiledlayout(4, 2, "TileSpacing", "compact");
 for ch_num = 1:8
     nexttile;
-    plot(real(out_sg(ch_num,:,pulse_num).' - check_sg(ch_num,:,pulse_num).'))
+    plot(reshape(real(out_sg(ch_num,:,:)),[],1) - reshape(real(check_sg(ch_num,:,:)), [], 1))
     title(sprintf('Channel %d', ch_num));
     grid on;
 end
-sgtitle(sprintf("Signal Difference — Pulse %d Re", pulse_num));
+sgtitle(sprintf("Signal Difference — Re"));
 %%
-figure;
-tiledlayout(4, 2, "TileSpacing", "compact");
-for ch_num = 1:8
-    nexttile;
-    plot(imag(out_sg(ch_num,:,pulse_num).' - check_sg(ch_num,:,pulse_num).'))
-    title(sprintf('Channel %d', ch_num));
-    grid on;
+if(~isreal(check_sg))
+    figure;
+    tiledlayout(4, 2, "TileSpacing", "compact");
+    for ch_num = 1:8
+        nexttile;
+        plot(reshape(imag(out_sg(ch_num,:,:)), [], 1) - reshape(imag(check_sg(ch_num,:,:)), [], 1))
+        title(sprintf('Channel %d', ch_num));
+        grid on;
+    end
+    sgtitle(sprintf("Signal Difference — Pulse %d Im", pulse_num));
 end
-sgtitle(sprintf("Signal Difference — Pulse %d Im", pulse_num));
+%%
+if(~isreal(check_sg))
+    figure;
+    tiledlayout(4, 2, "TileSpacing", "compact");
+    for ch_num = 1:8
+        nexttile;
+        plot(reshape(imag(out_sg(ch_num,:,:)), 141, size(out_sg,3)) - reshape(imag(check_sg(ch_num,:,:)), 141, size(out_sg,3)))
+        title(sprintf('Channel %d', ch_num));
+        grid on;
+    end
+    sgtitle(sprintf("Signal Difference — Pulse %d Im", pulse_num));
+end
