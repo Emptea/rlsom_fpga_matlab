@@ -2,8 +2,8 @@ close all
 date = "2026-09-14";
 date = string(datetime('today', 'Format', 'yyyy-MM-dd'));
 folder_basename = "data/";
-tp_num = tp.TP_SF; % ADC test point
-range_gate = 46;
+tp_num = tp.TP_BYPASS; % ADC test point
+range_gate = 46; % от 0 до 140
 pulse_num = 27; % pulse num to plot
 model_folder = folder_basename + "/2026-09-17/sig";
 out_folder = folder_basename + date + "/";
@@ -13,7 +13,7 @@ hdr_sz = 6;
 hdr = 1:hdr_sz;
 noise_level = 40;
 n_ch = 8;
-n_transfers = 20; % = n_packets / 4, max 250
+n_transfers = 250; % = n_packets / 4, max 250
 
 if tp_num > tp.TP_FFT
     ch = 0;
@@ -22,13 +22,19 @@ if tp_num > tp.TP_FFT
     end
 end
 %%
-if tp_num > tp.TP_FFT
-    launch_ip_comm_test(tp_num, ch, range_gate, 250, "adc_2_targets_1000_packets_1709.txt");
-else
-    for ch = 0:7
-        launch_ip_comm_test(tp_num, ch, range_gate, n_transfers, "adc_2_targets_1000_packets_1709.txt");
-    end
+for tp_num = [1:uint32(tp.TP_FFT), uint32(tp.TP_WEIGHT_OUT)]
+% for range_gate = 0:140
+switch tp_num
+    case {tp.TP_MAX, tp.TP_FIND, tp.TP_RANK, tp.TP_APU, tp.TP_FAPCH_COEFFS}
+        launch_ip_comm_test(tp_num, ch, range_gate, 250, "adc_2_targets_1000_packets_1709.txt");
+    otherwise
+        for ch = 0:7
+            launch_ip_comm_test(tp_num, ch, range_gate, n_transfers, "adc_2_targets_1000_packets_1709.txt");
+        end
+% end
 end
+end
+%%
 get_board_data(folder_basename + date + "/", "out");
 %%
 clear sg
@@ -127,7 +133,7 @@ end
 save_for_model(out_sg, tp_num);
 %%
 switch tp_num
-    case tp.TP_FFT
+    case {tp.TP_FFT, tp.TP_WEIGHT_OUT}
         figure; plot(check_sg(:, :,pulse_num).')
         legend("channel " + num2str([0:n_ch - 1].'))
         title("Signal from model pulse num " + pulse_num)
@@ -318,6 +324,18 @@ if(~isreal(check_sg))
     for ch_num = 1:8
         nexttile;
         plot(reshape(imag(out_sg(ch_num,:,:)), [], 1) - reshape(imag(check_sg(ch_num,:,:)), [], 1))
+        title(sprintf('Channel %d', ch_num));
+        grid on;
+    end
+    sgtitle(sprintf("Signal Difference — Pulse %d Im", pulse_num));
+end
+%%
+if(~isreal(check_sg))
+    figure;
+    tiledlayout(4, 2, "TileSpacing", "compact");
+    for ch_num = 1:8
+        nexttile;
+        plot(reshape(imag(out_sg(ch_num,:,:)), 141, size(out_sg,3)) - reshape(imag(check_sg(ch_num,:,:)), 141, size(out_sg,3)))
         title(sprintf('Channel %d', ch_num));
         grid on;
     end
