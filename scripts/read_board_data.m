@@ -1,48 +1,60 @@
-function sg = read_board_data(out_folder, tp_num, range_gate, hdr_sz)
-%READ_BOARD_DATA Read FPGA board output data for a specified test point.
-%
-% Inputs:
-%   out_folder - Folder containing the hexadecimal output files
-%   tp_num     - Test-point enumeration value, such as tp.TP_FIND
-%   range_gate - Selected range gate
-%   hdr_sz     - Header size
-%
-% Output:
-%   sg         - Board signal data
+function [sg, hdr] = read_board_data(out_folder, tp_num, range_gates)
 
-    sg = [];
-    tp_value = double(tp_num);
+tp_value = double(tp_num);
 
-    if tp_num > tp.TP_FFT
-        % Test points above TP_FFT contain only channel 0.
-        ch = 0;
+sg = [];
+hdr = [];
 
-        hexname = out_folder ...
-            + "/out_tp" + tp_value ...
-            + "_ch" + ch ...
-            + "_rg" + range_gate + ".hex";
+%% Определяем количество каналов
+% TODO
+channels = 0:7;
+switch tp_num
+    case {tp.TP_BYPASS, tp.TP_CUT, tp.TP_FAPCH, tp.TP_LOU, tp.TP_SF}
+    case {tp.TP_DDR, tp.TP_FFT, tp.TP_WEIGHT_OUT}
+    case {tp.TP_FIND, tp.TP_MAX,   tp.TP_RANK, tp.TP_FAPCH_COEFFS}
+        channels = 0;
+    otherwise
+        error("Unsupported test point: TP%d", double(tp_num));
+end
 
-        sg = fpga_txt2mat_for_ch(hexname);
-
-        disp(sg(ch+1, hdr_sz, 1))
-
-    else
-        % Other test points contain up to eight channels.
-        for ch = 0:7
-            try
-                hexname = out_folder ...
-                    + "/out_tp" + tp_value ...
-                    + "_ch" + ch ...
-                    + "_rg" + range_gate + ".hex";
-
-                sg(ch+1,:,:) = fpga_txt2mat_for_ch(hexname);
-
-                disp(sg(ch+1, hdr_sz, 1))
-
-            catch exception
-                disp("Found no file for channel " + ch)
-                disp(exception.message)
-            end
+%% Читаем
+for idx_rg = range_gates
+    for ch = channels
+        hexname = fullfile(out_folder, ...
+            "out_tp" + tp_value + ...
+            "_ch" + ch + ...
+            "_rg" + idx_rg + ".hex");
+        
+        if ~isfile(hexname)
+            fprintf("Файл отсутствует: %s\n", hexname);
+            continue;
         end
+        
+        [ch_data, ch_hdr] = fpga_read_res_file_for_ch(hexname);
+        sg(ch + 1, :, :, idx_rg - range_gates(1) + 1) = ch_data;
+        hdr = [hdr; ch_hdr];
     end
+end
+
+if length(range_gates) > 1
+    sg = permute(sg, [1,4,2,3]);
+end
+
+
+%% Сохраняем один MAT-файл
+tp_str = "tp" + double(tp_num) + "_" + lower(extractAfter(string(tp_num), "TP_"));
+if isscalar(range_gates)
+    var_name = "rtl_" + tp_str + "_rg" + range_gates;
+else
+    var_name = "rtl_" + tp_str;
+end
+matname = var_name + ".mat";
+matfullname = fullfile(out_folder, matname);
+S = struct();
+S.(var_name).data = sg;
+S.(var_name).hdr  = hdr;
+S.(var_name).range_gates = range_gates;
+save(matfullname, "-struct", "S");
+fprintf("Создан файл: %s\n", matfullname);
+
 end

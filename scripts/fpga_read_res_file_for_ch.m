@@ -1,64 +1,93 @@
-function sg = fpga_read_res_file_for_ch(filename, dims, flag_u32, flag_u220)
-% sg имеет размерность 8хMхKxN
-% тестовый файл содержит N строк в каждой строке 8 каналов
-arguments
-    filename string = "test.txt"
-    dims (1,2) double = [232, 1]  % [M, K]    
-    flag_u32 double = 0
-    flag_u220 double = 0
-end
+function [data, hdr] = fpga_read_res_file_for_ch(filename)
 
-% Читаем строки
+n_fft = 512;
+n_far_and_near_and_zeros = 164;
+n_far_and_near = 141;
+n_hdr_lines = 6;
+
+%% Чтение
 lines = readlines(filename);
 lines = strip(lines);
 lines(lines == "") = [];
 
-% Каждая строка содержит 16 чисел по 4 hex-символа
-chars = char(lines);
+%%
+sgs = [];
 
-% Разбиваем на группы по 4 символа
-
-if flag_u32
-    hex_words = reshape(chars.', 8, []).';
-    u32 = uint32(hex2dec(hex_words));
-    i32 =  typecast(u32, 'int32');
-
-    sg = double(i32);
-elseif (flag_u220)
-    %ne parsitsa
-    hex_words = reshape(chars.', 4, []).';
-    hex_words = hex_words(9:end, :);
-    u16 = uint16(hex2dec(hex_words));
-    s16 = typecast(u16, 'int16');
+idx_start_packet = 1;
+idx_packet = 1;
+while idx_start_packet < length(lines)    
+    hdr_range = idx_start_packet:(idx_start_packet + n_hdr_lines - 1);
+    hdr = fpga_parse_hdr(lines(hdr_range));
     
-    % Восстанавливаем пары Re/Im
-    re = double(s16(2:2:end));
-    im = double(s16(1:2:end));
-    ch1 = complex(re(1:2:end), im(1:2:end));
-    ch2 = complex(re(2:2:end), im(2:2:end));
-    figure; plot_complex(ch1)
-    figure; plot_complex(ch2)
-    sg = zeros(size(re,1)/2, 2);
-    sg(:,1) = ch1;
-    sg(:,2) = ch2;
-else
+    %% Определяем формат контрольной точки
+    switch hdr.tp
+        case tp.TP_BYPASS
+            data_size = 232;
+            is_u32 = false;
+        case {tp.TP_CUT, tp.TP_FAPCH, tp.TP_LOU}
+            data_size = n_far_and_near_and_zeros;
+            is_u32 = false;
+        case tp.TP_SF
+            data_size = n_far_and_near;
+            is_u32 = false;
+        case {tp.TP_DDR, tp.TP_FFT, tp.TP_WEIGHT_OUT}
+            data_size = n_fft;
+            is_u32 = false;
+        case tp.TP_MAX
+            data_size = n_far_and_near;
+            is_u32 = true;
+        case tp.TP_FIND
+            data_size = 5 * n_far_and_near;
+            is_u32 = true;
+        case {tp.TP_RANK, tp.TP_APU}
+            data_size = n_far_and_near_and_zeros;
+            is_u32 = true;
+        case tp.TP_FAPCH_COEFFS
+            data_size = 8;
+            is_u32 = false;
+        otherwise
+            error("Unsupported test point: TP%d", double(hdr.tp));
+    end
     
-    hex_words = reshape(chars.', 4, []).';
-    % hex -> uint16 -> int16
-    u16 = uint16(hex2dec(hex_words));
-    s16 = typecast(u16, 'int16');
+    idx_start_data = idx_start_packet + n_hdr_lines;
+    data_range = idx_start_data:(idx_start_data + data_size - 1);
+    data_chars = char(lines(data_range));
     
-    % Восстанавливаем пары Re/Im
-    re = double(s16(2:2:end));
-    im = double(s16(1:2:end));
+    if is_u32
+        
+        % 8 hex символов = uint32/int32
+        hex_words = reshape(data_chars.', 8, []).';
+        
+        u32 = uint32(hex2dec(hex_words));
+        sg = double(typecast(u32, 'int32'));
+        
+    else
+        
+        % 4 hex символа = uint16/int16
+        hex_words = reshape(data_chars.', 4, []).';
+        
+        u16 = uint16(hex2dec(hex_words));
+        s16 = typecast(u16, 'int16');
+        
+        % Формируем комплексные отсчёты
+        im = double(s16(1:2:end));
+        re = double(s16(2:2:end));
+        
+        sg = complex(re, im);
+    end    
     
-    sg = complex(re, im);
+    if idx_packet == 1
+        hdrs = hdr;
+    else
+        hdrs(idx_packet) = hdr;
+    end
+    sgs(:, idx_packet) = sg;
+    idx_packet = idx_packet + 1;
+    idx_start_packet = data_range(end) + 1;
+    
 end
 
-% В каждой строке было 8 комплексных отсчётов
-sg = reshape(sg, dims(1), dims(2), []);
-
-% Возвращаем исходный порядок каналов
-sg = squeeze(sg);
+hdr = hdrs;
+data = sgs;
 
 end
