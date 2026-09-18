@@ -2,7 +2,7 @@ close all
 date = "2026-09-14";
 date = string(datetime('today', 'Format', 'yyyy-MM-dd'));
 folder_basename = "data/";
-tp_num = tp.TP_BYPASS; % ADC test point
+tp_num = tp.TP_WEIGHT_OUT; % ADC test point
 range_gate = 46; % от 0 до 140
 pulse_num = 27; % pulse num to plot
 model_folder = folder_basename + "/2026-09-17/sig";
@@ -84,12 +84,12 @@ switch tp_num
         out_sg = sg(:,hdr_sz+1:end,end);
         check_sg = check_sg(:,end-511:end);
 
-    case tp.TP_FFT
+    case {tp.TP_FFT, tp.TP_WEIGHT_OUT}
         model_sg = get_mat_data( ...
             model_folder, tp_num, range_gate);
 
-        check_sg = [model_sg(:,1:101,third_dim), ...
-            model_sg(:,102:end,third_dim)];
+        check_sg = model_sg; %[model_sg(:,1:101,third_dim), ...
+           % model_sg(:,102:end,third_dim)];
         out_sg = abs(sg(:,hdr_sz+1:end,:));
         check_sg = abs(check_sg);
 
@@ -162,7 +162,7 @@ switch tp_num
 end
 %%
 switch tp_num
-    case tp.TP_FFT
+    case {tp.TP_FFT, tp.TP_WEIGHT_OUT}
         figure; plot(out_sg(:, :,pulse_num).')
         legend("channel " + num2str([0:n_ch - 1].'))
         title("Signal from board pulse num " + pulse_num)
