@@ -13,7 +13,8 @@ function sg = read_board_data(out_folder, tp_num, range_gate, hdr_sz)
     sg = [];
     tp_value = double(tp_num);
 
-    if tp_num > tp.TP_FFT
+    switch tp_num
+    case {tp.TP_MAX, tp.TP_FIND, tp.TP_RANK, tp.TP_APU, tp.TP_FAPCH_COEFFS}
         % Test points above TP_FFT contain only channel 0.
         ch = 0;
 
@@ -26,7 +27,7 @@ function sg = read_board_data(out_folder, tp_num, range_gate, hdr_sz)
 
         disp(sg(ch+1, hdr_sz, 1))
 
-    else
+    otherwise
         % Other test points contain up to eight channels.
         for ch = 0:7
             try

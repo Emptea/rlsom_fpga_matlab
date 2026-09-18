@@ -55,4 +55,12 @@ switch(tp_num)
     case 12
         load(folder + "/sig_tp12_fapch_coeffs.mat")
         sg = tp12_fapch_coeffs;
+    case 13
+        load(folder + "/sig_tp13_weight_out_far.mat")
+        load(folder + "/sig_tp13_weight_out_near.mat")
+        if range_gate < 101
+            sg = permute(tp13_weight_out_far(:,range_gate + 1,:,1:50), [1 3 4 2]);
+        else
+            sg = permute(tp13_weight_out_near(:,range_gate + 1 - 101,:,1:50), [1 3 4 2]);
+        end
 end
