@@ -13,7 +13,7 @@ hdr_sz = 6;
 hdr = 1:hdr_sz;
 noise_level = 40;
 n_ch = 8;
-n_transfers = 250; % = n_packets / 4, max 250
+n_transfers = 50; % = n_packets / 20, max 50
 
 if tp_num > tp.TP_FFT
     ch = 0;
@@ -22,7 +22,7 @@ if tp_num > tp.TP_FFT
     end
 end
 %%
-for tp_num = [1:uint32(tp.TP_FFT), uint32(tp.TP_WEIGHT_OUT)]
+for tp_num = [tp.TP_DDR, tp.TP_FFT, tp.TP_WEIGHT_OUT]
 % for range_gate = 0:140
 switch tp_num
     case {tp.TP_MAX, tp.TP_FIND, tp.TP_RANK, tp.TP_APU, tp.TP_FAPCH_COEFFS}

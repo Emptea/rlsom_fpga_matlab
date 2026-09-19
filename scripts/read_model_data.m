@@ -1,8 +1,10 @@
-function read_model_data(model_folder, tp_num)
+function sg = read_model_data(model_folder, tp_num)
 
-fullfilename = fullfile(model_folder, ...
-    "model_tp" + tp_value + ...
-    "_ch" + ch + ...
-    "_rg" + idx_rg + ".hex");
+filename = "model_" + tp_num.to_string() + ".mat";
+fullfilename = fullfile(model_folder, filename);
+
+S = load(fullfilename);
+names = fieldnames(S);
+sg = S.(names{1});
 
 end

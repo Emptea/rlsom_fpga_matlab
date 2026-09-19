@@ -1,7 +1,5 @@
 function [sg, hdr] = read_board_data(out_folder, tp_num, range_gates)
 
-tp_value = double(tp_num);
-
 sg = [];
 hdr = [];
 
@@ -21,7 +19,7 @@ end
 for idx_rg = range_gates
     for ch = channels
         hexname = fullfile(out_folder, ...
-            "out_tp" + tp_value + ...
+            "out_tp" + double(tp_num) + ...
             "_ch" + ch + ...
             "_rg" + idx_rg + ".hex");
         
@@ -42,11 +40,10 @@ end
 
 
 %% Сохраняем один MAT-файл
-tp_str = "tp" + double(tp_num) + "_" + lower(extractAfter(string(tp_num), "TP_"));
 if isscalar(range_gates)
-    var_name = "rtl_" + tp_str + "_rg" + range_gates;
+    var_name = "rtl_" + tp_num.to_string() + "_rg" + range_gates;
 else
-    var_name = "rtl_" + tp_str;
+    var_name = "rtl_" + tp_num.to_string();
 end
 matname = var_name + ".mat";
 matfullname = fullfile(out_folder, matname);
