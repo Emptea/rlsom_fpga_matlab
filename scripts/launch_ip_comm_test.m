@@ -13,7 +13,7 @@ executable = "./ip_comm_test";
 while true
     system_cmd = sprintf('ssh -t mini "cd %s && sudo %s %d %d %d %d %s %s && sudo ./reload_driver.sh "', ...
         prog_path, executable, tp_num, ch_num, range_gate, n_transfers, input_file, output_file);
-    disp(system_cmd)
+    % disp(system_cmd)
     [~, cmdout] = system(system_cmd);
     
     lines = split(cmdout, newline);
@@ -29,5 +29,5 @@ dmaLines = strjoin(dmaLines, newline);
 initLines = lines(contains(lines,'dma_proxy module initialized'));
 initLines = strjoin(initLines, newline);
 
-disp(dmaLines)
-disp(initLines)
+% disp(dmaLines)
+% disp(initLines)

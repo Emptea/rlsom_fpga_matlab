@@ -22,17 +22,29 @@ if tp_num > tp.TP_FFT
     end
 end
 %%
-for tp_num = [tp.TP_DDR, tp.TP_FFT, tp.TP_WEIGHT_OUT]
-% for range_gate = 0:140
-switch tp_num
-    case {tp.TP_MAX, tp.TP_FIND, tp.TP_RANK, tp.TP_APU, tp.TP_FAPCH_COEFFS}
-        launch_ip_comm_test(tp_num, ch, range_gate, 250, "adc_2_targets_1000_packets_1709.txt");
-    otherwise
-        for ch = 0:7
-            launch_ip_comm_test(tp_num, ch, range_gate, n_transfers, "adc_2_targets_1000_packets_1709.txt");
+tp_list = [tp.TP_FFT];
+range_gates = 0:140;
+
+n_tests = numel(tp_list) * numel(range_gates);
+i_test = 0;
+
+for tp_num = tp_list
+    for range_gate = range_gates
+        i_test = i_test + 1;
+        progress = 100 * i_test / n_tests;
+        fprintf('=== Test %s | range_gate = %d | %.1f%% ===\n', ...
+            tp_num.to_string(), range_gate, progress);
+        
+        switch tp_num
+            case {tp.TP_MAX, tp.TP_FIND, tp.TP_RANK, tp.TP_APU, tp.TP_FAPCH_COEFFS}
+                launch_ip_comm_test(tp_num, 0, range_gate, n_transfers, "adc_2_targets_1000_packets_1709.txt");
+                
+            otherwise
+                for ch = 0:7
+                    launch_ip_comm_test(tp_num, ch, range_gate, n_transfers, "adc_2_targets_1000_packets_1709.txt");
+                end
         end
-% end
-end
+    end
 end
 %%
 get_board_data(folder_basename + date + "/", "out");
@@ -53,7 +65,7 @@ switch tp_num
     case {tp.TP_CUT, tp.TP_FAPCH}
         model_sg = get_mat_data( ...
             model_folder, tp_num, range_gate);
-
+        
         check_sg = [ ...
             model_sg(:,far_field,1:size(sg,3)), ...
             zeros(8,20,size(sg,3)), ...
@@ -63,7 +75,7 @@ switch tp_num
     case {tp.TP_LOU}
         model_sg = get_mat_data( ...
             model_folder, tp_num, range_gate);
-
+        
         check_sg = [ ...
             model_sg(:,1:101,1:size(sg,3)), ...
             zeros(8,20,size(sg,3)), ...
@@ -86,16 +98,16 @@ switch tp_num
         check_sg = permute(check_sg, [1 3 2]);
         out_sg = sg(:,hdr_sz+1:end,end);
         check_sg = check_sg(:,end-511:end);
-
+        
     case tp.TP_FFT
         model_sg = get_mat_data( ...
             model_folder, tp_num, range_gate);
-
+        
         check_sg = [model_sg(:,1:101,third_dim), ...
             model_sg(:,102:end,third_dim)];
         out_sg = abs(sg(:,hdr_sz+1:end,:));
         check_sg = abs(check_sg);
-
+        
     case tp.TP_FIND
         ch = 0;
         try
@@ -114,18 +126,18 @@ switch tp_num
             [i-M-1, i-M, i-1, i, i-M/2]).';
         check_sg = check_sg(:);
         out_sg = sg(hdr_sz+1:end, :);
-
-
+        
+        
     case {tp.TP_MAX, tp.TP_RANK, tp.TP_APU, tp.TP_FAPCH_COEFFS}
         model_sg = get_mat_data( ...
             model_folder, tp_num, range_gate);
         check_sg = model_sg(:,1:size(sg,2));
         out_sg = sg(hdr_sz+1:end, :);
-
+        
     otherwise
         model_sg = get_mat_data( ...
             model_folder, tp_num, range_gate);
-
+        
         check_sg = [ ...
             model_sg(:,1:101,third_dim), ...
             zeros(8,20,size(sg,3)), ...
@@ -201,19 +213,19 @@ switch tp_num
         for ch_num = 1:n_ch
             check  = check_sg(ch_num,:,pulse_num).';
             output = out_sg(ch_num,:,pulse_num).';
-
+            
             [max_err_db, sqnr_sc_db] = check_data_sym(check, output, 1, 1);
             % % check_data_sym(check(range_gate), output(range_gate), 0,1);
-
+            
             sg_pwr = pow2db(max(abs(out_sg(ch_num,:,pulse_num)).^2));
-
+            
             disp("Channel " + num2str(ch_num) ...
                 + " Max Error dB = " ...
                 + num2str(max_err_db) + " dB, " ...
                 + " SQNR for scaled sg = " ...
                 + num2str(sqnr_sc_db) + " dB, " ...
                 + "max signal pwr = " + sg_pwr + " dB")
-
+            
             subplot(3,1,1);
             title("Pulse " + num2str(pulse_num) ...
                 + " for channel " + num2str(ch_num) ...
@@ -222,25 +234,25 @@ switch tp_num
     case tp.TP_FIND
         [max_err_db, sqnr_sc_db] = check_data_sym(check_sg, out_sg(:,pulse_num).');
         sg_pwr = pow2db(max(abs(out_sg(ch_num,:,pulse_num)).^2));
-
+        
         disp("Channel " + num2str(ch_num) ...
             + " Max Error dB = " ...
             + num2str(max_err_db) + " dB, " ...
             + " SQNR for scaled sg = " ...
             + num2str(sqnr_sc_db) + " dB, " ...
             + "max signal pwr = " + sg_pwr + " dB")
-
+        
         subplot(3,1,1);
         title("Pulse " + num2str(pulse_num) + ": Board vs Model")
-
+        
     case {tp.TP_MAX, tp.TP_RANK, tp.TP_APU}
         [max_err_db, sqnr_sc_db] = check_data_sym( ...
             check_sg(:,pulse_num).', ...
             out_sg(:,pulse_num).');
-
+        
         sg_pwr = pow2db(max(abs(out_sg(:,pulse_num)).^2));
-
-
+        
+        
         disp("Channel " + num2str(ch_num) ...
             + " Max Error dB = " ...
             + num2str(max_err_db) + " dB, " ...
@@ -254,31 +266,31 @@ switch tp_num
             [max_err_db, sqnr_sc_db] = check_data_sym( ...
                 2^14 * check_sg(ch_num,:).', ...
                 out_sg(ch_num,:).', 0);
-
+            
             sg_pwr = pow2db(max(abs(out_sg(ch_num,:)).^2));
-
+            
             check_scaled = round(check_sg(ch_num, 1) * 2^14);
             disp("Channel " + ch_num + ": board = " ...
                 + real(out_sg(ch_num, 1)) + " + "  + imag(out_sg(ch_num, 1)) ...
                 + "i, model = " ...
                 + real(check_scaled) + " + "  + imag(check_scaled) + "i");
         end
-
+        
     otherwise  % tp_num = 0:4, 6, or 7
         for ch_num = 1:n_ch
             [max_err_db, sqnr_sc_db] = check_data_sym( ...
                 check_sg(ch_num,:,pulse_num).', ...
                 out_sg(ch_num,:,pulse_num).', 1, 1);
-
+            
             sg_pwr = pow2db(max(abs(out_sg(ch_num,:,pulse_num)).^2));
-
+            
             disp("Channel " + num2str(ch_num) ...
                 + " Max Error dB = " ...
                 + num2str(max_err_db) + " dB, " ...
                 + " SQNR for scaled sg = " ...
                 + num2str(sqnr_sc_db) + " dB, " ...
                 + "max signal pwr = " + sg_pwr + " dB")
-
+            
             subplot(3,1,1);
             title("Pulse " + num2str(pulse_num) ...
                 + " for channel " + num2str(ch_num) ...
