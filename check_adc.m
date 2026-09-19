@@ -38,8 +38,11 @@ end
 get_board_data(folder_basename + date + "/", "out");
 %%
 clear sg
-sg = read_board_data(out_folder, tp_num, range_gate, hdr_sz);
-third_dim = 1:(size(sg,3));
+[rtl_sg, rtl_hdr] = read_board_data(out_folder, tp_num, range_gate);
+model_sg = read_model_data(model_folder, tp_num);
+bit_error = abs(model_sg - rtl_sg);
+
+%%
 
 switch tp_num
     case {tp.TP_BYPASS, tp.TP_SF}
