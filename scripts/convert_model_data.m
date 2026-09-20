@@ -33,27 +33,38 @@ switch tp_num
         far  = load_data(src_folder, "sig_tp5_ddr_far.mat");
         near = load_data(src_folder, "sig_tp5_ddr_near.mat");
         model = [far, near];
+        model = model(:,:,:,2:end);
         
     case tp.TP_FFT
         near = load_data(src_folder, "sig_tp6_kn_near.mat");
         far  = load_data(src_folder, "sig_tp6_kn_far.mat");
         model = [far, near];
+        model = model(:,:,:,2:end);
         
     case tp.TP_MAX
         % TODO
         far  = load_data(src_folder, "sig_tp7_ad_far.mat");
         near = load_data(src_folder, "sig_tp7_ad_near.mat");
-        model = [far; near];
+        model = [far; near].^2;
+        model = model(:,2:end);
         
     case tp.TP_FIND
-        far  = load_data(src_folder, "sig_tp8_apu_far.mat");
-        near = load_data(src_folder, "sig_tp8_apu_near.mat");
-        model = [far; near];
+        return;
+        % far  = load_data(src_folder, "sig_tp8_apu_far.mat");
+        % near = load_data(src_folder, "sig_tp8_apu_near.mat");
+        % model = [far; near];
         
     case tp.TP_RANK
         far  = load_data(src_folder, "sig_tp9_rank_far.mat");
         near = load_data(src_folder, "sig_tp9_rank_near.mat");
         model = [far; near];
+        model = model(:,2:end);
+
+    case tp.TP_APU
+        far  = load_data(src_folder, "sig_tp8_apu_far.mat");
+        near = load_data(src_folder, "sig_tp8_apu_near.mat");
+        model = [far; near];
+        model = model(:,2:end);
         
     case tp.TP_FAPCH_COEFFS
         model = load_data(src_folder, "sig_tp12_fapch_coeffs.mat");
@@ -62,6 +73,7 @@ switch tp_num
         far  = load_data(src_folder, "sig_tp5_ddr_far.mat");
         near = load_data(src_folder, "sig_tp5_ddr_near.mat");
         model = [far, near];
+        model = model(:,:,:,2:end);
         model = calc_weight(model);
         
     otherwise

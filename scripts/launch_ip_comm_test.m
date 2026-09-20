@@ -14,7 +14,11 @@ while true
     system_cmd = sprintf('ssh -t mini "cd %s && sudo %s %d %d %d %d %s %s && sudo ./reload_driver.sh "', ...
         prog_path, executable, tp_num, ch_num, range_gate, n_transfers, input_file, output_file);
     % disp(system_cmd)
-    [~, cmdout] = system(system_cmd);
+    [status, cmdout] = system(system_cmd);
+
+    if (status)
+        error(cmdout);
+    end
     
     lines = split(cmdout, newline);
     dmaLines = lines(contains(lines, 'DMA'));
