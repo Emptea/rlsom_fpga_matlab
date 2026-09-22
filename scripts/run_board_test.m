@@ -1,12 +1,12 @@
 function run_board_test(tp_list, range_gates, n_transfers, test_filename, savefolder)
 arguments
     tp_list
-    range_gates = 46
-    n_transfers double = 50
+    range_gates {mustBeInteger, mustBeInRange(range_gates, 0, 140)} = 0
+    n_transfers {mustBeInteger, mustBeInRange(n_transfers, 1, 1000)} = 50
     test_filename string = "adc_2_targets_1000_packets_1709.txt"
     savefolder string = fullfile("data", string(datetime('today', 'Format', 'yyyy-MM-dd')))
 end
-
+fprintf('\nrun_board_test\n')
 n_tests = 0;
 idx_test = 0;
 for tp_num = tp_list
@@ -34,16 +34,18 @@ end
 idx_test = 0;
 for test = tests_cfg
     tp_num = test.tp;
-    for range_gate = test.range_gates
-        idx_test = idx_test + 1;
+    for range_gate = test.range_gates        
         progress = 100 * idx_test / n_tests;
-        fprintf('=== Test %s | range_gate = %d | %.1f%% ===\n', tp_num.to_string(), range_gate, progress);
+        idx_test = idx_test + 1;
+        fprintf('== %5.1f%% | %-15s | range_gate = %3d \n', progress, tp_num.to_string(), range_gate);
         
         for ch = test.channels
             launch_ip_comm_test(tp_num, ch, range_gate, n_transfers, test_filename);
         end
+        
     end
 end
+disp("== 100.0% | complete");
 %%
 get_board_data(savefolder);
 

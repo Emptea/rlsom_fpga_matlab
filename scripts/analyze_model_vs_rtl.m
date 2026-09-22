@@ -8,8 +8,10 @@ switch tp_num
         
     case {tp.TP_DDR, tp.TP_FFT, tp.TP_WEIGHT_OUT}
         channels = 0:7;
-        model_sg = permute(model_sg, [1, 3, 2, 4]);
-        rtl_sg = permute(rtl_sg, [1, 3, 2, 4]);
+        if numel(size(model_sg)) == 4
+            model_sg = permute(model_sg, [1, 3, 2, 4]);
+            rtl_sg = permute(rtl_sg, [1, 3, 2, 4]);
+        end
         
     case {tp.TP_MAX, tp.TP_FIND, tp.TP_RANK, tp.TP_APU}
         channels = 0;
@@ -51,8 +53,8 @@ comment = sprintf("| %s | mean err: %10.4g | max err: %10.4g | pos err: %8d |", 
 
 fprintf("%-15s%s\n", name, comment);
 
-if status == "✗";
+% if status == "✗"
     plot_model_vs_rtl(model_sg, rtl_sg, bit_error, name, comment);
-end
+% end
 
 end

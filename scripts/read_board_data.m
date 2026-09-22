@@ -23,7 +23,7 @@ switch tp_num
         else
             var_name = "rtl_" + tp_num.to_string();
         end
-    case {tp.TP_FIND, tp.TP_MAX, tp.TP_RANK, tp.TP_FAPCH_COEFFS}
+    case {tp.TP_FIND, tp.TP_MAX, tp.TP_RANK, tp.TP_APU, tp.TP_FAPCH_COEFFS}
         channels = 0;
         range_gates = 0;
         var_name = "rtl_" + tp_num.to_string();

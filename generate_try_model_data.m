@@ -1,8 +1,8 @@
-src_folder = "data\2026-09-17\sig";
-model_folder = "data\2026-09-17\model";
+src_folder = "data\model\sig";
+model_folder = "data\model\try";
 
 for tp_num = enumeration("tp").'
-    if ismember(tp_num, [tp.TP_WORK, tp.TP_APU])
+    if ismember(tp_num, [tp.TP_WORK])
         continue;
     end
 

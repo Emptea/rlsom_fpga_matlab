@@ -40,7 +40,7 @@ while idx_start_packet < length(lines)
             data_size = 5 * n_far_and_near;
             is_u32 = true;
         case {tp.TP_RANK, tp.TP_APU}
-            data_size = n_far_and_near_and_zeros;
+            data_size = n_far_and_near;
             is_u32 = true;
         case tp.TP_FAPCH_COEFFS
             data_size = 8;
