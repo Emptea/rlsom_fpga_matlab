@@ -22,7 +22,7 @@ end
 function y = calc_rank_part(x, window, n_rank)
 
 % Усреднение соседних пар
-n = length(x);
+n = size(x, 1);
 
 idx1 = 1:2:n;
 idx2 = min(idx1 + 1, n);
@@ -32,9 +32,13 @@ avs = (x(idx1) + x(idx2)) / 2;
 % Симметричное дополнение нулями: 7 слева + 7 справа
 n_pad = floor(window / 2);
 
+% extended_avs = [zeros(n_pad, 1); ...
+%                 avs; ...
+%                 zeros(n_pad, 1)];
+
 extended_avs = [zeros(n_pad, 1); ...
                 avs; ...
-                zeros(n_pad, 1)];
+                flipud(avs(end-n_pad+1:end))];
 
 % Ранговый фильтр
 rank_out = zeros(size(avs));

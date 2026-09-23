@@ -27,7 +27,7 @@ while idx_start_packet < length(lines)
         case {tp.TP_CUT, tp.TP_FAPCH, tp.TP_LOU}
             data_size = n_far_and_near_and_zeros;
             is_u32 = false;
-        case tp.TP_SF
+        case {tp.TP_SF, tp.TP_MTI}
             data_size = n_far_and_near;
             is_u32 = false;
         case {tp.TP_DDR, tp.TP_FFT, tp.TP_WEIGHT_OUT}

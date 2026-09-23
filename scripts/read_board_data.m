@@ -12,7 +12,7 @@ hdr = [];
 % TODO
 
 switch tp_num
-    case {tp.TP_BYPASS, tp.TP_CUT, tp.TP_FAPCH, tp.TP_LOU, tp.TP_SF}
+    case {tp.TP_BYPASS, tp.TP_CUT, tp.TP_FAPCH, tp.TP_LOU, tp.TP_SF, tp.TP_MTI}
         channels = 0:7;
         range_gates = 0;
         var_name = "rtl_" + tp_num.to_string();
@@ -34,7 +34,7 @@ end
 %% Читаем
 for idx_rg = range_gates
     for ch = channels
-        hexname = fullfile(out_folder, ...
+        hexname = fullfile(out_folder, "out", ...
             "out_tp" + double(tp_num) + ...
             "_ch" + ch + ...
             "_rg" + idx_rg + ".hex");
