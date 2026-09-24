@@ -21,7 +21,7 @@ for tp_num = tp_list
             tests_cfg(idx_test).channels = 0:7;
             tests_cfg(idx_test).range_gates = range_gates;
             
-        case {tp.TP_MAX, tp.TP_FIND, tp.TP_RANK, tp.TP_APU}
+        case {tp.TP_MAX, tp.TP_FIND, tp.TP_RANK, tp.TP_APU, tp.TP_WORK}
             tests_cfg(idx_test).channels = 0;
             tests_cfg(idx_test).range_gates = 0;
             

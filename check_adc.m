@@ -9,7 +9,7 @@ range_gates = 0:140;
 
 
 %%
-run_board_test(tp_list, range_gates, test_filename);
+run_board_test(tp_list, range_gates, n_transfers, test_filename);
 %%
 [rtl_sg, rtl_hdr] = read_board_data(rtl_folder, tp_num, range_gates);
 model_sg = read_model_data(model_folder, tp_num);
