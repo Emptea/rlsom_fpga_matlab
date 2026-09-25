@@ -45,7 +45,7 @@ switch tp_num
         % TODO
         far  = load_data(src_folder, "sig_tp7_ad_far.mat");
         near = load_data(src_folder, "sig_tp7_ad_near.mat");
-        model = [far; near].^2;
+        model = [far; near];
         model = model(:,2:end);
         
     case tp.TP_FIND
@@ -75,6 +75,9 @@ switch tp_num
         model = [far, near];
         model = model(:,:,:,2:end);
         model = calc_weight(model);
+
+    case tp.TP_MTI
+        model  = load_data(src_folder, "sig_tp14_mti.mat");
         
     otherwise
         error("Unsupported test point: TP%d", double(tp_num));
