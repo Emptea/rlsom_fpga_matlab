@@ -1,4 +1,4 @@
-function [sg, hdr] = read_board_data(out_folder, tp_num, range_gates)
+function [sg, hdr, formular] = read_board_data(out_folder, tp_num, range_gates)
 arguments
     out_folder string
     tp_num
@@ -7,6 +7,7 @@ end
 
 sg = [];
 hdr = [];
+formular = [];
 
 %% Определяем количество каналов
 % TODO
@@ -23,7 +24,7 @@ switch tp_num
         else
             var_name = "rtl_" + tp_num.to_string();
         end
-    case {tp.TP_FIND, tp.TP_MAX, tp.TP_RANK, tp.TP_APU, tp.TP_FAPCH_COEFFS}
+    case {tp.TP_FIND, tp.TP_MAX, tp.TP_RANK, tp.TP_APU, tp.TP_FAPCH_COEFFS, tp.TP_WORK}
         channels = 0;
         range_gates = 0;
         var_name = "rtl_" + tp_num.to_string();
@@ -44,9 +45,12 @@ for idx_rg = range_gates
             continue;
         end
         
-        [ch_data, ch_hdr] = fpga_read_res_file_for_ch(hexname);
+        [ch_data, ch_hdr, ch_formular] = fpga_read_res_file_for_ch(hexname);
         sg(ch + 1, :, :, idx_rg - range_gates(1) + 1) = ch_data;
         hdr = [hdr; ch_hdr];
+        if tp_num == 0
+            formular = [formular; ch_formular];
+        end
     end
 end
 sg = squeeze(sg);
