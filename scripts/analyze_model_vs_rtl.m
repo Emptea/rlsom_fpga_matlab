@@ -14,11 +14,17 @@ switch tp_num
         
     case {tp.TP_DDR, tp.TP_FFT, tp.TP_WEIGHT_OUT}
         channels = 0:7;
-        if numel(size(model_sg)) == 4
-            model_sg = permute(model_sg, [1, 3, 2, 4]);   
+        sz_model_sg = size(model_sg);
+        if numel(sz_model_sg) == 4
+            model_sg = permute(model_sg, [1, 3, 2, 4]);
+        elseif sz_model_sg(3) == 512
+            model_sg = permute(model_sg, [1, 3, 2]);    
         end
-        if numel(size(rtl_sg)) == 4            
+        sz_rtl_sg = size(rtl_sg);
+        if numel(sz_rtl_sg) == 4            
             rtl_sg = permute(rtl_sg, [1, 3, 2, 4]);
+        elseif sz_rtl_sg(3) == 512
+             rtl_sg = permute(rtl_sg, [1, 3, 2]);  
         end
         
     case {tp.TP_MAX, tp.TP_FIND, tp.TP_RANK, tp.TP_APU}
