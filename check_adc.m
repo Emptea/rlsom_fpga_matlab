@@ -1,6 +1,5 @@
 close all
 test_filename = "2026-10-01_sig_tp1_fd.txt";
-test_filename = "adc_2_targets_1000_packets_1709.txt";
 model_folder = "data/model/2026-10-01/try";
 rtl_folder = "data/2026-10-03";
 n_transfers = 50; % = n_packets / 20, max 50
