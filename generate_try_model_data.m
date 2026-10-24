@@ -1,5 +1,5 @@
-src_folder = "data\model\sig";
-model_folder = "data\model\try";
+src_folder = "data\model\2026-10-01\sig";
+model_folder = "data\model\2026-10-01\try";
 
 for tp_num = enumeration("tp").'
     if ismember(tp_num, [tp.TP_WORK])

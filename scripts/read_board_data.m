@@ -33,12 +33,13 @@ switch tp_num
 end
 
 %% Читаем
-for idx_rg = range_gates
+idx_rg = 1;
+for rg = range_gates
     for ch = channels
         hexname = fullfile(out_folder, "out", ...
             "out_tp" + double(tp_num) + ...
             "_ch" + ch + ...
-            "_rg" + idx_rg + ".hex");
+            "_rg" + rg + ".hex");
         
         if ~isfile(hexname)
             fprintf("Файл отсутствует: %s\n", hexname);
@@ -46,12 +47,13 @@ for idx_rg = range_gates
         end
         
         [ch_data, ch_hdr, ch_formular] = fpga_read_res_file_for_ch(hexname);
-        sg(ch + 1, :, :, idx_rg - range_gates(1) + 1) = ch_data;
+        sg(ch + 1, :, :, idx_rg) = ch_data;
         hdr = [hdr; ch_hdr];
         if tp_num == 0
             formular = [formular; ch_formular];
         end
     end
+    idx_rg = idx_rg + 1;
 end
 sg = squeeze(sg);
 if length(range_gates) > 1
