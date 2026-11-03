@@ -5,13 +5,13 @@ arguments
     date string = string(datetime('today', 'Format', 'yyyy-MM-dd'));
 end
 
-prog_path = "~/drivers/ip_comm_test/build/";
-board_files = fullfile(prog_path, date, basename + "*");
+prog_path = "/home/ubuntu/drivers/ip_comm_test/build/";
+board_files = prog_path + date + "/" + basename + "*";
 if ~exist(savefolder, 'dir')
     mkdir(savefolder)
 end
 
-system_cmd = "scp ""mini:" + board_files + """ """ + savefolder + "/""";
+system_cmd = "scp ""mini2:" + board_files + """ """ + savefolder + "/""";
 
 [status, cmdout] = system(system_cmd + " 2>&1");
 

@@ -1,4 +1,4 @@
-function [sg, hdr, formular] = read_board_data(out_folder, tp_num, range_gates)
+function [sg, hdr, formular, noise_formular, work_posthdr] = read_board_data(out_folder, tp_num, range_gates)
 arguments
     out_folder string
     tp_num
@@ -8,6 +8,8 @@ end
 sg = [];
 hdr = [];
 formular = [];
+noise_formular = [];
+work_posthdr = [];
 
 %% Определяем количество каналов
 % TODO
@@ -46,11 +48,13 @@ for rg = range_gates
             continue;
         end
         
-        [ch_data, ch_hdr, ch_formular] = fpga_read_res_file_for_ch(hexname);
+        [ch_data, ch_hdr, ch_formular, ch_noise_formular, ch_work_posthdr] = fpga_read_res_file_for_ch(hexname);
         sg(ch + 1, :, :, idx_rg) = ch_data;
         hdr = [hdr; ch_hdr];
         if tp_num == 0
             formular = [formular; ch_formular];
+            noise_formular = [noise_formular; ch_noise_formular];
+            work_posthdr = [work_posthdr;ch_work_posthdr];
         end
     end
     idx_rg = idx_rg + 1;

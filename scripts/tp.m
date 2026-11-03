@@ -15,6 +15,7 @@ classdef tp < uint8
         TP_FAPCH_COEFFS     (12)
         TP_WEIGHT_OUT       (13)
         TP_MTI              (14)
+        TP_NOISE            (16)
     end
     
     methods

@@ -1,4 +1,4 @@
-function [data, hdr, formular] = fpga_read_res_file_for_ch(filename)
+function [data, hdr, formular, noise_formular, posthdr] = fpga_read_res_file_for_ch(filename)
 
 n_fft = 512;
 n_far_and_near_and_zeros = 164;
@@ -16,7 +16,9 @@ sgs = [];
 idx_start_packet = 1;
 idx_packet = 1;
 formular_cnt = 0;
-formular = struct([]);
+formulars = struct([]);
+noise_formulars = struct([]);
+posthdrs = struct([]);
 while idx_start_packet < length(lines)    
     hdr_range = idx_start_packet:(idx_start_packet + n_hdr_lines - 1);
     hdr = fpga_parse_hdr(lines(hdr_range));
@@ -48,7 +50,7 @@ while idx_start_packet < length(lines)
             data_size = 8;
             is_u32 = false;
         case tp.TP_WORK
-            data_size = 2;
+            data_size = 17;
             is_u32 = false;
         otherwise
             error("Unsupported test point: TP%d", double(hdr.tp));
@@ -59,21 +61,44 @@ while idx_start_packet < length(lines)
     data_chars = char(lines(data_range));
     
     if(hdr.tp == tp.TP_WORK)
-        work_posthdr = fpga_parse_posthdr(lines(data_range));
+        hex_words = reshape(data_chars.', 8, []).';
+        
+        u32 = uint32(hex2dec(hex_words));
+        noise_FAP = double(typecast(u32(2:9), 'int32'));
+        noise_LOU = double(typecast(u32(10:end), 'int32'));
+        sg = [noise_FAP; noise_LOU]; % noise_FAP[8], noise_LOU[8]
+        
+
+        idx_start_posthdr = idx_start_data + data_size;
+        posthdr_size = 2;
+        data_size  = data_size + posthdr_size;
+        posthdr_range = idx_start_posthdr: (idx_start_posthdr + posthdr_size - 1);
+        work_posthdr = fpga_parse_posthdr(lines(posthdr_range));
+        if idx_packet == 1
+            noise_formulars = struct( ...
+                'n_packet', u32(1), ...
+                'noise_FAP', noise_FAP, ...
+                'noise_LOU', noise_LOU);
+            
+        else
+            noise_formulars(idx_packet) = struct( ...
+                'n_packet', u32(1), ...
+                'noise_FAP', noise_FAP, ...
+                'noise_LOU', noise_LOU);
+        end
         n_packs = work_posthdr.n_formulars;
         for i = 1:n_packs
             formular_cnt = formular_cnt + 1;
             formular_sz = 4;
-            formular_offset = idx_start_data + data_size + (i - 1)*(formular_sz);
+            formular_offset = idx_start_posthdr + posthdr_size + (i - 1)*(formular_sz);
             formular_range = formular_offset:(formular_offset + formular_sz - 1);
             if formular_cnt == 1
-                formular = fpga_parse_work_formular(lines(formular_range));
+                formulars = fpga_parse_work_formular(lines(formular_range));
             else
-                formular(formular_cnt) =  fpga_parse_work_formular(lines(formular_range)); 
+                formulars(formular_cnt) =  fpga_parse_work_formular(lines(formular_range)); 
             end
             data_size = data_size + formular_sz;
         end
-        sg = 1;
         data_range = idx_start_data:(idx_start_data + data_size - 1);
     elseif is_u32
         
@@ -117,5 +142,9 @@ end
 
 hdr = hdrs;
 data = sgs;
+formular = formulars;
+noise_formular = noise_formulars;
+posthdr = posthdrs;
+
 
 end

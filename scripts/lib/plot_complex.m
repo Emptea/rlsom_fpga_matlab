@@ -17,8 +17,10 @@ end
 sigs_c = reshape(sigs_c, size(sigs_c, 1), []);
 subplot(2,1,1)
 plot(x, real(sigs_c));
+title('re')
 subplot(2,1,2);
 plot(x, imag(sigs_c));
+title('im')
 
 linkaxes;
 

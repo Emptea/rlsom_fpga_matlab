@@ -1,8 +1,9 @@
-function analyze_model_vs_rtl(tp_num, model_sg, rtl_sg, force_plot)
+function analyze_model_vs_rtl(tp_num, model_sg, rtl_sg, rtl_formular, force_plot)
 arguments
     tp_num
     model_sg
     rtl_sg
+    rtl_formular
     force_plot logical = false
 end
 
@@ -27,9 +28,12 @@ switch tp_num
              rtl_sg = permute(rtl_sg, [1, 3, 2]);  
         end
         
-    case {tp.TP_MAX, tp.TP_FIND, tp.TP_RANK, tp.TP_APU}
+    case {tp.TP_MAX, tp.TP_FIND, tp.TP_RANK, tp.TP_APU, tp.TP_WORK}
         channels = 0;
         
+    case {tp.TP_WORK}
+        channels = 0;
+        rtl_sg = [rtl_sg(1:8) rtl_sg(9:16)];
     otherwise
         error("Unsupported test: %s", tp_num.to_string());
 end
