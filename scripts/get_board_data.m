@@ -11,7 +11,7 @@ if ~exist(savefolder, 'dir')
     mkdir(savefolder)
 end
 
-system_cmd = "scp ""mini:" + board_files + """ """ + savefolder + "/""";
+system_cmd = "scp ""mini2:" + board_files + """ """ + savefolder + "/""";
 
 [status, cmdout] = system(system_cmd + " 2>&1");
 
