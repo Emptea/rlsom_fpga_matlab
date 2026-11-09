@@ -1,5 +1,5 @@
 function convert_model_data(src_folder, model_folder, tp_num)
-
+mergestructs = @(x,y) cell2struct([struct2cell(x);struct2cell(y)],[fieldnames(x);fieldnames(y)]);
 if ~exist(model_folder, "dir")
     mkdir(model_folder);
 end
@@ -8,7 +8,10 @@ far_field = 41:141;
 near_field = 148:187;
 
 switch tp_num
-    
+
+    case tp.TP_WORK
+         model = load_data(src_folder, "sig_tp0_formular.mat");
+
     case tp.TP_BYPASS
         model = load_data(src_folder, "sig_tp1_fd.mat");
         
@@ -78,7 +81,10 @@ switch tp_num
 
     case tp.TP_MTI
         model  = load_data(src_folder, "sig_tp14_mti.mat");
-        
+    
+    case tp.TP_NOISE
+        model = load_noise_data(src_folder, "sig_tp16_mti.mat");
+
     otherwise
         error("Unsupported test point: TP%d", double(tp_num));
 end
@@ -107,5 +113,16 @@ assert(numel(names) == 1, ...
     "Expected one variable in %s", filename);
 
 data = S.(names{1});
+
+end
+
+
+function data = load_noise_data(folder, filename)
+
+S = load(fullfile(folder, filename));
+
+names = fieldnames(S);
+
+data = permute([S.(names{2})(:,2,:); S.(names{1})(:,2,:)], [1 3 2]);
 
 end

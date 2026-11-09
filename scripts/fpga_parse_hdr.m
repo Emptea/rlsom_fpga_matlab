@@ -1,6 +1,9 @@
 function hdr = fpga_parse_hdr(hdr_hex)
 
-del = hex2dec(hdr_hex(1)) * 2^32 + hex2dec(hdr_hex(2));
+hi = uint64(hex2dec(hdr_hex(1)));
+lo = uint64(hex2dec(hdr_hex(2)));
+
+del = bitor(bitshift(hi, 32), lo);
 packet_number = hex2dec(hdr_hex(3));
 timestamp_high = uint64(hex2dec(hdr_hex(5)));
 timestamp_low  = uint64(hex2dec(hdr_hex(4)));
