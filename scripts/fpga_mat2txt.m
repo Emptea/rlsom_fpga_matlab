@@ -26,7 +26,7 @@ elseif contains(file, "tp4-sf-both") || contains(file, "tp4_sf_both")
     tp4_sf_both(:,1:101,:) = tp4_sf_both(:,1:101,:);
     tp4_sf_both(:,102:end,:) = tp4_sf_both(:,102:end,:);
     % d = fpga_double2fxp(tp4_sf_both_near);
-    d = tp4_sf_both
+    d = tp4_sf_both;
 elseif contains(file, "tp5-kn-far") || contains(file, "tp5_kn_far")
     % d = fpga_double2fxp(tp5_kn_far);
     d = tp5_kn_far;

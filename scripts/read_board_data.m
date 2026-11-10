@@ -1,49 +1,78 @@
-function sg = read_board_data(out_folder, tp_num, range_gate, hdr_sz)
-%READ_BOARD_DATA Read FPGA board output data for a specified test point.
-%
-% Inputs:
-%   out_folder - Folder containing the hexadecimal output files
-%   tp_num     - Test-point enumeration value, such as tp.TP_FIND
-%   range_gate - Selected range gate
-%   hdr_sz     - Header size
-%
-% Output:
-%   sg         - Board signal data
+function [sg, hdr, formular, noise_formular, work_posthdr] = read_board_data(out_folder, tp_num, range_gates)
+arguments
+    out_folder string
+    tp_num
+    range_gates = 0:140
+end
 
-    sg = [];
-    tp_value = double(tp_num);
+sg = [];
+hdr = [];
+formular = [];
+noise_formular = [];
+work_posthdr = [];
 
-    switch tp_num
-    case {tp.TP_MAX, tp.TP_FIND, tp.TP_RANK, tp.TP_APU, tp.TP_FAPCH_COEFFS}
-        % Test points above TP_FFT contain only channel 0.
-        ch = 0;
+%% Определяем количество каналов
+% TODO
 
-        hexname = out_folder ...
-            + "/out_tp" + tp_value ...
-            + "_ch" + ch ...
-            + "_rg" + range_gate + ".hex";
-
-        sg = fpga_txt2mat_for_ch(hexname);
-
-        disp(sg(ch+1, hdr_sz, 1))
-
+switch tp_num
+    case {tp.TP_BYPASS, tp.TP_CUT, tp.TP_FAPCH, tp.TP_LOU, tp.TP_SF, tp.TP_MTI}
+        channels = 0:7;
+        range_gates = 0;
+        var_name = "rtl_" + tp_num.to_string();
+    case {tp.TP_DDR, tp.TP_FFT, tp.TP_WEIGHT_OUT}
+        channels = 0:7;
+        if isscalar(range_gates)
+            var_name = "rtl_" + tp_num.to_string() + "_rg" + range_gates;
+        else
+            var_name = "rtl_" + tp_num.to_string();
+        end
+    case {tp.TP_FIND, tp.TP_MAX, tp.TP_RANK, tp.TP_APU, tp.TP_FAPCH_COEFFS, tp.TP_WORK}
+        channels = 0;
+        range_gates = 0;
+        var_name = "rtl_" + tp_num.to_string();
     otherwise
-        % Other test points contain up to eight channels.
-        for ch = 0:7
-            try
-                hexname = out_folder ...
-                    + "/out_tp" + tp_value ...
-                    + "_ch" + ch ...
-                    + "_rg" + range_gate + ".hex";
+        error("Unsupported test point: TP%d", double(tp_num));
+end
 
-                sg(ch+1,:,:) = fpga_txt2mat_for_ch(hexname);
-
-                disp(sg(ch+1, hdr_sz, 1))
-
-            catch exception
-                disp("Found no file for channel " + ch)
-                disp(exception.message)
-            end
+%% Читаем
+idx_rg = 1;
+for rg = range_gates
+    for ch = channels
+        hexname = fullfile(out_folder, "out", ...
+            "out_tp" + double(tp_num) + ...
+            "_ch" + ch + ...
+            "_rg" + rg + ".hex");
+        
+        if ~isfile(hexname)
+            fprintf("Файл отсутствует: %s\n", hexname);
+            continue;
+        end
+        
+        [ch_data, ch_hdr, ch_formular, ch_noise_formular, ch_work_posthdr] = fpga_read_res_file_for_ch(hexname);
+        sg(ch + 1, :, :, idx_rg) = ch_data;
+        hdr = [hdr; ch_hdr];
+        if tp_num == 0
+            formular = [formular; ch_formular];
+            noise_formular = [noise_formular; ch_noise_formular];
+            work_posthdr = [work_posthdr;ch_work_posthdr];
         end
     end
+    idx_rg = idx_rg + 1;
+end
+sg = squeeze(sg);
+if length(range_gates) > 1
+    sg = permute(sg, [1,4,2,3]);
+end
+
+
+%% Сохраняем один MAT-файл
+matname = var_name + ".mat";
+matfullname = fullfile(out_folder, matname);
+S = struct();
+S.(var_name).data = sg;
+S.(var_name).hdr  = hdr;
+S.(var_name).range_gates = range_gates;
+save(matfullname, "-struct", "S");
+fprintf("Создан файл: %s\n", matfullname);
+
 end
