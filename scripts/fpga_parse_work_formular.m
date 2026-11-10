@@ -7,7 +7,7 @@ range = uint8(bitand(third_word, 0xffu32));
 n_main_amp = uint16(bitand(bitshift(third_word, -8), 0x7u32));
 n_neighbour_amp = uint16(bitand(bitshift(third_word, -11), 0x1u32));
 n_freq_chan = uint16(bitand(bitshift(third_word, -12), 0x1FFu32));
-P_i = hex2dec(work_formular_hex(4));
+rank_out = hex2dec(work_formular_hex(4));
 
 
 work_formular = struct( ...
@@ -17,6 +17,6 @@ work_formular = struct( ...
     'n_main_amp', n_main_amp, ...
     'n_neighbour_amp', n_neighbour_amp, ...
     'n_freq_chan', n_freq_chan, ...
-    'P_i', P_i);
+    'rank_out', rank_out);
 
 end
