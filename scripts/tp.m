@@ -10,9 +10,18 @@ classdef tp < uint8
         TP_FFT              (7)
         TP_MAX              (8)
         TP_FIND             (9)
-    	TP_RANK             (10)
-	    TP_APU              (11)
+        TP_RANK             (10)
+        TP_APU              (11)
         TP_FAPCH_COEFFS     (12)
         TP_WEIGHT_OUT       (13)
+        TP_MTI              (14)
+        TP_NOISE            (16)
+    end
+    
+    methods
+        function str = to_string(obj)
+            str = "tp" + double(obj) + "_" + ...
+                lower(extractAfter(string(obj), "TP_"));
+        end
     end
 end

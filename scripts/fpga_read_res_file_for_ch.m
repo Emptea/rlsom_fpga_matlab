@@ -1,64 +1,150 @@
-function sg = fpga_read_res_file_for_ch(filename, dims, flag_u32, flag_u220)
-% sg имеет размерность 8хMхKxN
-% тестовый файл содержит N строк в каждой строке 8 каналов
-arguments
-    filename string = "test.txt"
-    dims (1,2) double = [232, 1]  % [M, K]    
-    flag_u32 double = 0
-    flag_u220 double = 0
-end
+function [data, hdr, formular, noise_formular, posthdr] = fpga_read_res_file_for_ch(filename)
 
-% Читаем строки
+n_fft = 512;
+n_far_and_near_and_zeros = 164;
+n_far_and_near = 141;
+n_hdr_lines = 6;
+
+%% Чтение
 lines = readlines(filename);
 lines = strip(lines);
 lines(lines == "") = [];
 
-% Каждая строка содержит 16 чисел по 4 hex-символа
-chars = char(lines);
+%%
+sgs = [];
 
-% Разбиваем на группы по 4 символа
+idx_start_packet = 1;
+idx_packet = 1;
+formular_cnt = 0;
+formulars = struct([]);
+noise_formulars = struct([]);
+posthdrs = struct([]);
+while idx_start_packet < length(lines)    
+    hdr_range = idx_start_packet:(idx_start_packet + n_hdr_lines - 1);
+    hdr = fpga_parse_hdr(lines(hdr_range));
+    
+    %% Определяем формат контрольной точки
+    switch hdr.tp
+        case tp.TP_BYPASS
+            data_size = 232;
+            is_u32 = false;
+        case {tp.TP_CUT, tp.TP_FAPCH, tp.TP_LOU}
+            data_size = n_far_and_near_and_zeros;
+            is_u32 = false;
+        case {tp.TP_SF, tp.TP_MTI}
+            data_size = n_far_and_near;
+            is_u32 = false;
+        case {tp.TP_DDR, tp.TP_FFT, tp.TP_WEIGHT_OUT}
+            data_size = n_fft;
+            is_u32 = false;
+        case tp.TP_MAX
+            data_size = n_far_and_near;
+            is_u32 = true;
+        case tp.TP_FIND
+            data_size = 5 * n_far_and_near;
+            is_u32 = true;
+        case {tp.TP_RANK, tp.TP_APU}
+            data_size = n_far_and_near;
+            is_u32 = true;
+        case tp.TP_FAPCH_COEFFS
+            data_size = 8;
+            is_u32 = false;
+        case tp.TP_WORK
+            data_size = 17;
+            is_u32 = false;
+        otherwise
+            error("Unsupported test point: TP%d", double(hdr.tp));
+    end
+    
+    idx_start_data = idx_start_packet + n_hdr_lines;
+    data_range = idx_start_data:(idx_start_data + data_size - 1);
+    data_chars = char(lines(data_range));
+    
+    if(hdr.tp == tp.TP_WORK)
+        hex_words = reshape(data_chars.', 8, []).';
+        
+        u32 = uint32(hex2dec(hex_words));
+        noise_FAP = double(typecast(u32(2:9), 'int32'));
+        noise_LOU = double(typecast(u32(10:end), 'int32'));
+        sg = [noise_FAP; noise_LOU]; % noise_FAP[8], noise_LOU[8]
+        
 
-if flag_u32
-    hex_words = reshape(chars.', 8, []).';
-    u32 = uint32(hex2dec(hex_words));
-    i32 =  typecast(u32, 'int32');
-
-    sg = double(i32);
-elseif (flag_u220)
-    %ne parsitsa
-    hex_words = reshape(chars.', 4, []).';
-    hex_words = hex_words(9:end, :);
-    u16 = uint16(hex2dec(hex_words));
-    s16 = typecast(u16, 'int16');
+        idx_start_posthdr = idx_start_data + data_size;
+        posthdr_size = 2;
+        data_size  = data_size + posthdr_size;
+        posthdr_range = idx_start_posthdr: (idx_start_posthdr + posthdr_size - 1);
+        work_posthdr = fpga_parse_posthdr(lines(posthdr_range));
+        if idx_packet == 1
+            noise_formulars = struct( ...
+                'n_packet', u32(1), ...
+                'noise_FAP', noise_FAP, ...
+                'noise_LOU', noise_LOU);
+            
+        else
+            noise_formulars(idx_packet) = struct( ...
+                'n_packet', u32(1), ...
+                'noise_FAP', noise_FAP, ...
+                'noise_LOU', noise_LOU);
+        end
+        n_packs = work_posthdr.n_formulars;
+        for i = 1:n_packs
+            formular_cnt = formular_cnt + 1;
+            formular_sz = 4;
+            formular_offset = idx_start_posthdr + posthdr_size + (i - 1)*(formular_sz);
+            formular_range = formular_offset:(formular_offset + formular_sz - 1);
+            if formular_cnt == 1
+                formulars = fpga_parse_work_formular(lines(formular_range));
+            else
+                formulars(formular_cnt) =  fpga_parse_work_formular(lines(formular_range)); 
+            end
+            data_size = data_size + formular_sz;
+        end
+        data_range = idx_start_data:(idx_start_data + data_size - 1);
+    elseif is_u32
+        
+        % 8 hex символов = uint32/int32
+        hex_words = reshape(data_chars.', 8, []).';
+        
+        u32 = uint32(hex2dec(hex_words));
+        sg = double(typecast(u32, 'int32'));
+        
+    else
+        
+        % 4 hex символа = uint16/int16
+        hex_words = reshape(data_chars.', 4, []).';
+        
+        u16 = uint16(hex2dec(hex_words));
+        s16 = typecast(u16, 'int16');
+        
+        % Формируем комплексные отсчёты
+        im = double(s16(1:2:end));
+        re = double(s16(2:2:end));
+        
+        sg = complex(re, im);
+    end    
     
-    % Восстанавливаем пары Re/Im
-    re = double(s16(2:2:end));
-    im = double(s16(1:2:end));
-    ch1 = complex(re(1:2:end), im(1:2:end));
-    ch2 = complex(re(2:2:end), im(2:2:end));
-    figure; plot_complex(ch1)
-    figure; plot_complex(ch2)
-    sg = zeros(size(re,1)/2, 2);
-    sg(:,1) = ch1;
-    sg(:,2) = ch2;
-else
+    if idx_packet == 1
+        hdrs = hdr;
+        if(hdr.tp == tp.TP_WORK)
+            posthdrs = work_posthdr;
+        end
+    else
+        hdrs(idx_packet) = hdr;
+        if(hdr.tp == tp.TP_WORK)
+            posthdrs(idx_packet) = work_posthdr;
+        end
+    end
+    sgs(:, idx_packet) = sg;
+    idx_packet = idx_packet + 1;
+    idx_start_packet = data_range(end) + 1;
     
-    hex_words = reshape(chars.', 4, []).';
-    % hex -> uint16 -> int16
-    u16 = uint16(hex2dec(hex_words));
-    s16 = typecast(u16, 'int16');
-    
-    % Восстанавливаем пары Re/Im
-    re = double(s16(2:2:end));
-    im = double(s16(1:2:end));
-    
-    sg = complex(re, im);
 end
 
-% В каждой строке было 8 комплексных отсчётов
-sg = reshape(sg, dims(1), dims(2), []);
+hdr = hdrs;
+data = sgs;
+formular = formulars;
+noise_formular = noise_formulars;
+posthdr = posthdrs;
 
-% Возвращаем исходный порядок каналов
-sg = squeeze(sg);
 
 end
