@@ -25,13 +25,13 @@ for tp_num = tp_list
         noise_fap = calc_noise_zone(rtl_tp3_fap, noise_formular);
         noise_lou = calc_noise_zone(rtl_tp4_lou, noise_formular);
         model_sg = [noise_fap; noise_lou];
-        model_formulars = read_model_data(model_folder, tp_num, noise_formular);
+        model_formulars = read_model_data(model_folder, tp_num, work_packet);
     else
-        model_sg = read_model_data(model_folder, tp_num,noise_formular);
+        model_sg = read_model_data(model_folder, tp_num,work_packet);
     end
     [rtl_sg, rtl_hdr, rtl_range_gates] = read_rtl_data(rtl_folder, tp_num);
     if numel(rtl_range_gates) > 1
         model_sg = model_sg(:, rtl_range_gates + 1, :, :);
     end
-    analyze_model_vs_rtl(tp_num, model_sg, rtl_sg, rtl_formular, true);
+    analyze_model_vs_rtl(tp_num, model_sg, rtl_sg, true);
 end
