@@ -11,9 +11,9 @@ cpNames = { ...
     'TP0_WORK', 'TP1_BYPASS', 'TP2_CUT', 'TP3_FAPCH', 'TP4_LOU', ...
     'TP5_SF', 'TP6_DDR', 'TP7_FFT', 'TP8_MAX', 'TP9_FIND', ...
     'TP10_RANK', 'TP11_APU', 'TP12_FAPCH_COEFFS', ...
-    'TP13_WEIGHT_OUT', 'TP14_MTI', 'TP99_SDR'};
+    'TP13_WEIGHT_OUT', 'TP14_MTI', 'TP15_PU_IN', 'TP99_SDR'};
 
-cpValues = uint32([0:14 99]);
+cpValues = uint32([0:15 99]);
 currentCP = uint32(1);
 
 %% STATE
@@ -195,6 +195,13 @@ logEvent("Локальный порт: " + localPort + "; удалённый а�
     function onChangeCP(src, ~)
         
         currentCP = uint32(src.Value);
+        if currentCP == 15
+        legend(ax, [plotRe plotIm], ...
+            {'Амплитуда', 'Порог'}, "Location", "northeast");
+        else
+            legend(ax, [plotRe plotIm], ...
+                {'Re', 'Im'}, "Location", "northeast");
+        end
         
         sampleIndex = 0;
         
@@ -421,7 +428,12 @@ logEvent("Локальный порт: " + localPort + "; удалённый а�
                 
                     packetRe = [packetRe; double(data.values(:))];
                     packetIm = [packetIm; nan(numel(data.values), 1)];
-                
+
+                elseif data.type == "pu_in"
+
+                    packetRe = [packetRe; data.amplitude(:)];
+                    packetIm = [packetIm; data.threshold(:)];
+                                
                 end
                 
                 decodedCount = decodedCount + 1;
@@ -712,6 +724,10 @@ switch source
     case 14
         expectedValues = 141;
         kind = "complex";
+
+    case 15
+        expectedValues = 141 * 2;
+        kind = "pu_in";
         
     otherwise
         
@@ -758,7 +774,16 @@ if kind == "complex"
         data.nearZoneIm = data.im(122:161);
         
     end
-    
+
+elseif kind == "pu_in"
+
+    values = decodeUint32(words);
+
+    % 141 амплитуда + 141 порог.
+    % Каждая пара: амплитуда, порог.
+    data.amplitude = double(values(1:2:end));
+    data.threshold = double(values(2:2:end));
+
 else
     
     int32Values = decodeInt32(words);
@@ -890,6 +915,26 @@ high = uint32(words(2:2:end));
 raw = bitor(low, bitshift(high, 16));
 
 values = typecast(raw(:), "int32");
+
+end
+
+
+%% UINT16 WORDS -> UINT32 VALUES
+
+function values = decodeUint32(words)
+
+words = uint16(words(:));
+
+if mod(numel(words), 2) ~= 0
+    error("Количество uint16 слов для uint32 должно быть чётным");
+end
+
+low = uint32(words(1:2:end));
+high = uint32(words(2:2:end));
+
+raw = bitor(low, bitshift(high, 16));
+
+values = raw(:);
 
 end
 
