@@ -1,4 +1,4 @@
-function [sg, hdr, formular, noise_formular, work_posthdr] = read_board_data(out_folder, tp_num, range_gates)
+function [sg, hdr, work_packet] = read_board_data(out_folder, tp_num, range_gates)
 arguments
     out_folder string
     tp_num
@@ -7,9 +7,7 @@ end
 
 sg = [];
 hdr = [];
-formular = [];
-noise_formular = [];
-work_posthdr = [];
+work_packet = struct([]);
 
 %% Определяем количество каналов
 % TODO
@@ -26,7 +24,7 @@ switch tp_num
         else
             var_name = "rtl_" + tp_num.to_string();
         end
-    case {tp.TP_FIND, tp.TP_MAX, tp.TP_RANK, tp.TP_APU, tp.TP_FAPCH_COEFFS, tp.TP_WORK}
+    case {tp.TP_FIND, tp.TP_MAX, tp.TP_RANK, tp.TP_APU, tp.TP_FAPCH_COEFFS, tp.TP_WORK, tp.TP_PU_IN}
         channels = 0;
         range_gates = 0;
         var_name = "rtl_" + tp_num.to_string();
@@ -48,13 +46,15 @@ for rg = range_gates
             continue;
         end
         
-        [ch_data, ch_hdr, ch_formular, ch_noise_formular, ch_work_posthdr] = fpga_read_res_file_for_ch(hexname);
+        [ch_data, ch_hdr, ch_work_packet] = fpga_read_res_file_for_ch(hexname);
+        if isempty(ch_hdr)
+            fprintf("Файл пуст: %s\n", hexname);
+            continue;
+        end
         sg(ch + 1, :, :, idx_rg) = ch_data;
         hdr = [hdr; ch_hdr];
         if tp_num == 0
-            formular = [formular; ch_formular];
-            noise_formular = [noise_formular; ch_noise_formular];
-            work_posthdr = [work_posthdr;ch_work_posthdr];
+            work_packet = [work_packet; ch_work_packet(:)];
         end
     end
     idx_rg = idx_rg + 1;
@@ -72,6 +72,7 @@ S = struct();
 S.(var_name).data = sg;
 S.(var_name).hdr  = hdr;
 S.(var_name).range_gates = range_gates;
+S.(var_name).work_packet = work_packet;
 save(matfullname, "-struct", "S");
 fprintf("Создан файл: %s\n", matfullname);
 

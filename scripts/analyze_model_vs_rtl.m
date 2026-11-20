@@ -1,9 +1,8 @@
-function analyze_model_vs_rtl(tp_num, model_sg, rtl_sg, rtl_formular, force_plot)
+function analyze_model_vs_rtl(tp_num, model_sg, rtl_sg, force_plot)
 arguments
     tp_num
     model_sg
     rtl_sg
-    rtl_formular
     force_plot logical = false
 end
 
