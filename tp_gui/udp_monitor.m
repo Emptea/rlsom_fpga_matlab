@@ -20,13 +20,15 @@ currentCP = uint32(1);
 udp = [];
 txTimer = [];
 sampleIndex = 0;
+lastRe = [];
+lastIm = [];
 
 %% GUI
 fig = uifigure("Name", "UDP Monitor", "Position", [100 50 1400 950], "Color", [0.96 0.97 0.98]);
 fig.CloseRequestFcn = @onClose;
 
 main = uigridlayout(fig, [3 1]);
-main.RowHeight = {105, '1x', 155};
+main.RowHeight = {90, '1x', 155};
 main.Padding = [12 12 12 12];
 main.RowSpacing = 10;
 
@@ -35,10 +37,22 @@ panel = uipanel(main, "Title", "Управление", "FontWeight", "bold");
 panel.Layout.Row = 1;
 
 pg = uigridlayout(panel, [2 12]);
-pg.RowHeight = {25, 35};
-pg.ColumnWidth = {105, 65, 100, 65, 105, 65, 105, 65, 80, 80, 95, '1x'};
-pg.Padding = [10 8 10 8];
-pg.ColumnSpacing = 7;
+
+pg.RowHeight = {22, 28};
+
+pg.ColumnWidth = { ...
+    100, 45, ...  % Контрольная точка
+    45,  35, ...  % RG
+    45,  35, ...  % Номер канала
+    50,  40, ...  % Период
+    65, ...       % Старт
+    65, ...       % Стоп
+    100, ...      % Режим отображения
+    '1x'};        % Статус
+
+pg.Padding = [8 5 8 5];
+pg.ColumnSpacing = 5;
+pg.RowSpacing = 3;
 
 % Control point
 cpLabel = uilabel(pg, "Text", "Контрольная точка:");
@@ -51,7 +65,7 @@ cpDropDown.Layout.Column = [1 2];
 cpDropDown.ValueChangedFcn = @onChangeCP;
 
 % Range channel (RG)
-rgLabel = uilabel(pg, "Text", "Дальностный канал RG:");
+rgLabel = uilabel(pg, "Text", "RG:");
 rgLabel.Layout.Row = 1;
 rgLabel.Layout.Column = [3 4];
 
@@ -60,7 +74,7 @@ rgField.Layout.Row = 2;
 rgField.Layout.Column = [3 4];
 
 % Channel (NKAN)
-channelLabel = uilabel(pg, "Text", "Номер канала:");
+channelLabel = uilabel(pg, "Text", "CH:");
 channelLabel.Layout.Row = 1;
 channelLabel.Layout.Column = [5 6];
 
@@ -69,7 +83,7 @@ channelField.Layout.Row = 2;
 channelField.Layout.Column = [5 6];
 
 % Request period
-periodLabel = uilabel(pg, "Text", "Период запроса, с:");
+periodLabel = uilabel(pg, "Text", "Период, с:");
 periodLabel.Layout.Row = 1;
 periodLabel.Layout.Column = [7 8];
 
@@ -90,10 +104,23 @@ stopButton.Layout.Row = 2;
 stopButton.Layout.Column = 10;
 stopButton.ButtonPushedFcn = @onStop;
 
+% Display mode
+displayLabel = uilabel(pg, "Text", "Отображение");
+displayLabel.Layout.Row = 1;
+displayLabel.Layout.Column = 11;
+
+displayMode = uidropdown(pg, ...
+    "Items", {'Re / Im', 'ABS'}, ...
+    "Value", 'Re / Im');
+
+displayMode.Layout.Row = 2;
+displayMode.Layout.Column = 11;
+displayMode.ValueChangedFcn = @onChangeDisplay;
+
 % Status
 statusLabel = uilabel(pg, "Text", "● UDP остановлен", "FontWeight", "bold", "FontColor", [0.7 0.2 0.2]);
 statusLabel.Layout.Row = [1 2];
-statusLabel.Layout.Column = [11 12];
+statusLabel.Layout.Column = 12;
 
 %% PLOT
 
@@ -105,19 +132,25 @@ ax.YGrid = "on";
 ax.XMinorGrid = "on";
 ax.YMinorGrid = "on";
 
+% Размер шрифта чисел на осях
+ax.FontSize = 16;
 enableDefaultInteractivity(ax);
 axtoolbar(ax, {"zoomin", "zoomout", "pan", "restoreview"});
 
-xlabel(ax, "Номер отсчёта");
-ylabel(ax, "Значение");
-title(ax, "Контрольная точка PHD");
+% Графики
+plotRe = plot(ax, nan, nan, "Color", [0.1 0.4 0.9]);
 
-plotRe = plot(ax, nan, nan, "Color", [0.1 0.4 0.9], "LineWidth", 1.0);
 hold(ax, "on");
-plotIm = plot(ax, nan, nan, "Color", [0.9 0.2 0.2], "LineWidth", 1.0);
+
+plotIm = plot(ax, nan, nan, "Color", [0.9 0.2 0.2]);
+
 hold(ax, "off");
 
-legend(ax, [plotRe plotIm], {'Re', 'Im'}, "Location", "northeast");
+% Легенда
+lgd = legend(ax, [plotRe plotIm], ...
+    {'Re', 'Im'}, "Location", "northeast");
+
+lgd.FontSize = 16;
 
 %% EVENT LOG
 
@@ -193,26 +226,65 @@ logEvent("Локальный порт: " + localPort + "; удалённый а�
     end
 
     function onChangeCP(src, ~)
-        
+
         currentCP = uint32(src.Value);
-        if currentCP == 15
-        legend(ax, [plotRe plotIm], ...
-            {'Амплитуда', 'Порог'}, "Location", "northeast");
-        else
-            legend(ax, [plotRe plotIm], ...
-                {'Re', 'Im'}, "Location", "northeast");
-        end
-        
+    
         sampleIndex = 0;
-        
+    
+        % Очищаем предыдущие данные
+        lastRe = [];
+        lastIm = [];
+    
+        set(plotRe, "XData", nan, "YData", nan);
+        set(plotIm, "XData", nan, "YData", nan);
+    
+        isComplex = ismember(currentCP, ...
+            [1 2 3 4 5 6 7 12 13 14 99]);
+    
+        if isComplex
+            displayMode.Enable = "on";
+        else
+            displayMode.Enable = "off";
+        end
+    
+        if currentCP == 15
+    
+            plotIm.Visible = "on";
+    
+            lgd = legend(ax, [plotRe plotIm], ...
+                {'Амплитуда', 'Порог'});
+    
+        elseif isComplex
+    
+            if strcmp(displayMode.Value, 'ABS')
+    
+                plotIm.Visible = "off";
+                lgd = legend(ax, plotRe, {'ABS'});
+    
+            else
+    
+                plotIm.Visible = "on";
+                lgd = legend(ax, [plotRe plotIm], {'Re', 'Im'});
+    
+            end
+    
+        else
+    
+            plotIm.Visible = "off";
+            lgd = legend(ax, plotRe, {'Значение'});
+    
+        end
+    
+        lgd.FontSize = 16;
+        lgd.Location = "northeast";
+        lgd.AutoUpdate = "off";
+    
         idx = find(cpValues == currentCP, 1);
         cpName = cpNames{idx};
-        
-        title(ax, "Контрольная точка " + cpName);
-        
+    
         logEvent("Выбрана КТ " + cpName + ...
             " (formNumber=" + currentCP + ")");
-        
+    
     end
 
     function onChangePeriod(src, ~)
@@ -287,30 +359,35 @@ logEvent("Локальный порт: " + localPort + "; удалённый а�
                 raw(2:2:end) = tmp;
 
                 if currentCP == 99
-
-                    % SDR: нет транспортного заголовка POI_TK_Kvit
-                    [ok, sdrHeader, blocks] = parseSdrPacket(raw);
+                
+                    % Сначала разбираем POI_TK_Kvit
+                    [ok, transport] = parseTransportPacket(raw);
+                
+                    if ~ok
+                        logEvent("SDR: ошибка транспортного заголовка");
+                        continue;
+                    end
+                
+                    % Извлекаем данные без транспортного заголовка
+                    payload = raw(5:end);
+                
+                    % Разбираем SDR-блоки
+                    [ok, sdrHeader, blocks] = parseSdrPacket(payload);
+                
                     if ~ok
                         logEvent("Ошибка разбора SDR-пакета");
                         continue;
                     end
-
-
+                
                     logEvent("SDR: найдено блоков " + numel(blocks));
                 
-                    for k = 1:numel(blocks)
-                        logEvent("SDR BLOCK " + k + ...
-                            ": Counter=" + blocks(k).counter);
-                    end
-                
-                    % Объединяем все SDR-блоки                   
                     allRe = vertcat(blocks.re);
                     allIm = vertcat(blocks.im);
-                    
-                    % Выводим все блоки последовательно
+                
                     updatePlot(allRe, allIm);
                 
                     continue;
+
 
 
                 
@@ -462,23 +539,84 @@ logEvent("Локальный порт: " + localPort + "; удалённый а�
 
 
     function updatePlot(re, im)
-        
+
         re = double(re(:));
         im = double(im(:));
-        
+    
         if isempty(re) || numel(re) ~= numel(im)
             return;
         end
-        
+    
+        % Сохраняем исходные данные
+        lastRe = re;
+        lastIm = im;
+    
         x = 1:numel(re);
-        
-        % Обновляем линии целиком за один вызов
-        set(plotRe, "XData", x, "YData", re);
-        set(plotIm, "XData", x, "YData", im);
-        
-        % Обновляем график без анимации
-        drawnow;
-        
+    
+        % Комплексные контрольные точки
+        isComplex = ismember(currentCP, ...
+            [1 2 3 4 5 6 7 12 13 14 99]);
+    
+        if currentCP == 15
+    
+            % Амплитуда и порог
+            plotIm.Visible = "on";
+    
+            set(plotRe, "XData", x, "YData", re);
+            set(plotIm, "XData", x, "YData", im);
+    
+            lgd = legend(ax, [plotRe plotIm], ...
+                {'Амплитуда', 'Порог'});
+    
+        elseif isComplex && strcmp(displayMode.Value, 'ABS')
+    
+            % Модуль комплексного сигнала
+            absData = hypot(re, im);
+    
+            set(plotRe, "XData", x, "YData", absData);
+    
+            % Скрываем мнимую составляющую
+            plotIm.Visible = "off";
+    
+            lgd = legend(ax, plotRe, {'ABS'});
+    
+        elseif isComplex
+    
+            % Действительная и мнимая составляющие
+            plotIm.Visible = "on";
+    
+            set(plotRe, "XData", x, "YData", re);
+            set(plotIm, "XData", x, "YData", im);
+    
+            lgd = legend(ax, [plotRe plotIm], {'Re', 'Im'});
+    
+        else
+    
+            % Вещественные контрольные точки
+            plotIm.Visible = "off";
+    
+            set(plotRe, "XData", x, "YData", re);
+    
+            lgd = legend(ax, plotRe, {'Значение'});
+    
+        end
+    
+        lgd.FontSize = 16;
+        lgd.Location = "northeast";
+        lgd.AutoUpdate = "off";
+    
+        drawnow limitrate nocallbacks;
+    
+    end
+
+    function onChangeDisplay(src, ~)
+    
+        if ~isempty(lastRe)
+            updatePlot(lastRe, lastIm);
+        end
+    
+        logEvent("Режим отображения: " + string(src.Value));
+    
     end
 
     function logEvent(message)
@@ -818,52 +956,24 @@ function [valid, sdrHeader, blocks] = parseSdrPacket(raw)
 
     raw = uint8(raw(:));
 
-    HEADER_SIZE = 12;
     BLOCK_SIZE = 936;
-    BLOCK_WORDS = BLOCK_SIZE / 2;
+    HEADER_SIZE = 8;
     SAMPLES_COUNT = 232;
 
-    if numel(raw) < HEADER_SIZE + BLOCK_SIZE
+    % Проверка размера
+    if isempty(raw) || mod(numel(raw), BLOCK_SIZE) ~= 0
         return;
     end
 
-    if mod(numel(raw), 2) ~= 0
-        return;
-    end
+    blockCount = numel(raw) / BLOCK_SIZE;
 
     % changeEndian уже выполнен в onReceive
     bytes = reshape(raw, 2, []);
-
     words = uint16(bytes(1,:)).' + ...
         bitshift(uint16(bytes(2,:)).', 8);
 
-    % Общий заголовок SDR
-    sdrHeader.words = words(1:6);
-    sdrHeader.bytes = raw(1:HEADER_SIZE);
-
-    % Маркер начала блока
-    delimiter = uint16([hex2dec('0123'); hex2dec('4567')]);
-
-    % Ищем все маркеры после общего заголовка
-    starts = find( ...
-        words(7:end-1) == delimiter(1) & ...
-        words(8:end) == delimiter(2)) + 6;
-
-    if isempty(starts)
-        return;
-    end
-
-    % Проверяем структуру блоков
-    if any(diff(starts) ~= BLOCK_WORDS)
-        return;
-    end
-
-    % Проверяем, что последний блок помещается целиком
-    if starts(end) + BLOCK_WORDS - 1 > numel(words)
-        return;
-    end
-
-    blockCount = numel(starts);
+    BLOCK_WORDS = BLOCK_SIZE / 2;
+    HEADER_WORDS = HEADER_SIZE / 2;
 
     blocks = repmat(struct( ...
         "counter", uint32(0), ...
@@ -872,16 +982,24 @@ function [valid, sdrHeader, blocks] = parseSdrPacket(raw)
 
     for k = 1:blockCount
 
-        startWord = starts(k);
+        startWord = (k-1) * BLOCK_WORDS + 1;
 
-        % Счётчик блока
+        % Первые 4 слова — заголовок блока
+        headerWords = words(startWord:startWord+HEADER_WORDS-1);
+
+        % Сохраняем заголовок для диагностики
+        if k == 1
+            sdrHeader.words = headerWords;
+        end
+
+        % Счётчик блока (предполагается в словах 3 и 4)
         blocks(k).counter = bitor( ...
-            bitshift(uint32(words(startWord+2)), 16), ...
-            uint32(words(startWord+3)));
+            uint32(headerWords(3)), ...
+            bitshift(uint32(headerWords(4)), 16));
 
-        % Данные Re / Im
+        % 232 комплексных отсчёта
         sampleWords = words( ...
-            startWord+4 : startWord+BLOCK_WORDS-1);
+            startWord+HEADER_WORDS : startWord+BLOCK_WORDS-1);
 
         if numel(sampleWords) ~= SAMPLES_COUNT * 2
             blocks = struct([]);
